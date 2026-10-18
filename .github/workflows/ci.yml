@@ -30,3 +30,40 @@ jobs:
 
       - name: Check whitespace errors
         run: git diff --check
+
+  test:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src
+      DATABASE_URL: "sqlite:///:memory:"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read Python version
+        id: pyver
+        run: echo "version=$(cat .python-version)" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ steps.pyver.outputs.version }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Unit tests
+        run: pytest -q tests/unit
+
+      - name: Integration tests
+        run: pytest -q tests/integration
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t picme:ci .

@@ -56,7 +56,7 @@ refresh by polling the server every 2 seconds.
 | Unit tests | `export PYTHONPATH=$PWD/src && pytest -q tests/unit` |
 | Integration tests | `export PYTHONPATH=$PWD/src && pytest -q tests/integration` |
 | Run locally | `export PYTHONPATH=$PWD/src && python -m uvicorn app.main:app --reload` |
-| Build/release | Docker build (defined by teammate during setup) |
+| Build/release | `docker build -t picme .` |
 
 ## Dependencies
 
