@@ -36,6 +36,66 @@ refresh by polling the server every 2 seconds.
 **Database:** SQLite for development and CI, PostgreSQL (Neon) in production.  
 **Runtime:** Docker image deployed to Render.
 
+## Domain model
+
+The domain is organized around the `Game` aggregate; `Round`, `Player`, `Photo`,
+and `Vote` are game-owned records. `Prompt` is selected and recorded per game
+so it cannot be reused in that game.
+
+- **Game:** `id`, six-character `code`, secret `host_token`, `phase`, and
+  accumulated player scores. It owns players and rounds, allows joins only in
+  `lobby`, and controls the `lobby`, `uploading`, `voting`, `reveal`, and
+  `scoreboard` transitions. A code identifies one game and state reads may
+  trigger deadline-driven transitions.
+- **Player:** `id`, `game_id`, display `name`, normalized name, and `score`.
+  Names are trimmed, 1-20 characters, and unique within a game ignoring case
+  and spaces. A player persists through refreshes and Play again.
+- **Prompt:** `id`, game association, source/category, and prompt text. A
+  selected or typed prompt is recorded as used and cannot repeat within a game;
+  typed prompts must be non-empty.
+- **Round:** `id`, `game_id`, number, prompt, `upload_deadline`, and current
+  photo/order state. It accepts only 20, 40, or 60 second upload durations
+  (default 40), closes on deadline, all-player completion, or host action, and
+  moves to voting when it has photos or back to lobby when it does not.
+- **Photo:** `id`, `round_id`, `player_id`, compressed JPEG bytes, size, and
+  fixed display order. Each player has at most one current photo per round;
+  replacement is allowed only during uploading, with JPEG bytes at most 2 MB.
+  Photos are anonymous during voting and reveal their uploader afterward.
+- **Vote:** `id`, `photo_id`, voter `player_id`, guessed `player_id`, and
+  timestamp. Each eligible voter has only their latest guess per photo; the
+  uploader cannot vote on their own photo, and the guessed player must be in
+  the same game. Voting closes when the host ends it or all eligible voters
+  have voted.
+
+Application services and ports:
+
+- `GameService` (UC-001) creates games, joins players, validates host access,
+  and reads public game state.
+- `RoundService` (UC-002) selects prompts, starts and closes rounds, enforces
+  deadlines and upload rules, and stores/replaces photos.
+- `VotingService` (UC-003) records latest guesses, reports private vote
+  progress, closes voting, reveals uploaders, and advances photos.
+- `ScoreService` (UC-004) awards points, applies competition ranking, ends a
+  game, exposes the scoreboard, and resets a game for Play again.
+- Repository ports: `GameRepository`, `PlayerRepository`, `PromptRepository`,
+  `RoundRepository`, `PhotoRepository`, and `VoteRepository`, one interface
+  per aggregate or persisted domain record. `PhotoStorage` stores and retrieves
+  compressed JPEG bytes without coupling the domain to a storage technology.
+
+HTTP endpoints required by the use cases:
+
+- `POST /games` creates a game; `POST /games/{code}/players` joins it;
+  `GET /games/{code}/state` reads state and applies deadline transitions.
+- `POST /games/{code}/rounds` starts a round; `POST /games/{code}/rounds/{round_id}/photos`
+  uploads or replaces a photo; `POST /games/{code}/rounds/{round_id}/extend`
+  adds 10 seconds; `POST /games/{code}/rounds/{round_id}/close` ends uploads.
+- `POST /games/{code}/photos/{photo_id}/votes` submits or replaces a guess;
+  `GET /games/{code}/votes/progress` reads host-only progress;
+  `POST /games/{code}/voting/close` closes voting; `POST /games/{code}/reveal/next`
+  advances to the next photo; `POST /games/{code}/reveal/lobby` returns to lobby.
+- `POST /games/{code}/end` ends the game; `GET /games/{code}/scoreboard` reads
+  the final ranking; `POST /games/{code}/play-again` resets the game.
+
 ## Structure
 
 - `docs/specs/` — executable use-case specifications.
