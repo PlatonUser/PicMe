@@ -1,23 +1,23 @@
 # TASKS.md
 
 PHASE: 1
-STATUS: in-progress
+STATUS: done
 
 (0=Bootstrap | 1=Specify | 2=Design | 3=Develop | 4=Validate | 5=Deploy)
 
 ## Current Use Case
 
-UC-002-PLAY-ROUND-AND-UPLOAD — specify next.
+UC-004-REVEAL-AND-SCOREBOARD — specified.
 
 ## Completed in Phase 1
 
 - docs/specs/UC-001-CREATE-AND-JOIN-GAME.md
 - docs/specs/UC-003-GUESS-WHO.md
+- docs/specs/UC-002-PLAY-ROUND-AND-UPLOAD.md
+- docs/specs/UC-004-REVEAL-AND-SCOREBOARD.md
 
 ## Backlog
 
-- docs/specs/UC-002-PLAY-ROUND-AND-UPLOAD.md
-- docs/specs/UC-004-REVEAL-AND-SCOREBOARD.md
 
 ## Working agreement
 
