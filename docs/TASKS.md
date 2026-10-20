@@ -19,6 +19,9 @@ OWNER: B
 PHASE: 2
 STATUS: done
 
+Phase 3 prompt slice: implemented in `src/app/domain/prompt.py`; unit and
+integration tests pass (`17 passed`).
+
 ## UC-003
 
 OWNER: A
