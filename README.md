@@ -14,8 +14,8 @@ before code and open pull requests for review before merging.
 ## AI tooling
 
 - Coding agent: OpenCode
-- Model: `kimi-k2.7-code`, chosen because it is the coding model
-  supplied by the FHNW LiteLLM gateway for this project and using open-weight model for comparison with GPT-5.6 Luna. Kimi uses less credits, while keeping almost the same quality and time for task execution.
+- Model: `GPT-5.6 Luna`, chosen because it is the coding model
+  supplied by the FHNW LiteLLM gateway for this project and using open-weight model for comparison with other availiable models. GPT-5.6 Luna uses a little bit more credits, while offering better quality and speed for task execution.
 - Access is via the FHNW LiteLLM gateway; API keys are stored only in GitHub
   Codespaces secrets.
 - MCP server: `baissue` (`https://gitmcp.io/AIaSDev/BAIssue`) gives the agent
