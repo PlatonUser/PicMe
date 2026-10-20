@@ -1,26 +1,32 @@
 # TASKS.md
 
-PHASE: 1
+PHASE: 2
 STATUS: done
 
 (0=Bootstrap | 1=Specify | 2=Design | 3=Develop | 4=Validate | 5=Deploy)
 
-## Current Use Case
+Sprint: 2 (develop with TDD)
 
-UC-004-REVEAL-AND-SCOREBOARD — specified.
+## UC-001
 
-## Completed in Phase 1
+OWNER: A
+PHASE: 2
+STATUS: done
 
-- docs/specs/UC-001-CREATE-AND-JOIN-GAME.md
-- docs/specs/UC-003-GUESS-WHO.md
-- docs/specs/UC-002-PLAY-ROUND-AND-UPLOAD.md
-- docs/specs/UC-004-REVEAL-AND-SCOREBOARD.md
+## UC-002
 
-## Backlog
+OWNER: B
+PHASE: 2
+STATUS: done
 
+## UC-003
 
-## Working agreement
+OWNER: A
+PHASE: 2
+STATUS: done
 
-- Keep one active use case small enough to deliver vertically.
-- Update this file when the lifecycle phase or active use case changes.
-- Link decisions and validation evidence from the relevant project artefact.
+## UC-004
+
+OWNER: A
+PHASE: 2
+STATUS: done
