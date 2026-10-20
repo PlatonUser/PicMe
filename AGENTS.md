@@ -73,6 +73,8 @@ before the project context has been completed.
 - Respect **Clean Architecture**  
   domain ← application ← interfaces ← infrastructure
 - Prefer **small vertical slices** (one UC end-to-end).
+- Domain and application code must not import fastapi or sqlalchemy (ADR-001).
+- Every use case is developed red, green, refactor; failing tests are committed before the implementation.
 - Read the [canonical AI-SDLC documentation](https://docs.aisl.science/learning-and-resources/ai-sdlc)
   when terminology or lifecycle responsibilities are unclear.
 

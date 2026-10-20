@@ -12,7 +12,8 @@ operate and test on Render's free tier.
 ## Decision
 
 Clients poll `GET /games/{code}/state` every 2 seconds. The server evaluates
-deadline-driven transitions whenever state is read.
+the upload deadline on every state read. No background jobs are used for
+deadline transitions.
 
 ## Alternatives
 
@@ -22,5 +23,7 @@ deadline-driven transitions whenever state is read.
 ## Consequences
 
 Polling is simple, works on the Render free tier, and is easy to test with
-ordinary HTTP requests. It creates regular request traffic and updates may be
-delayed by up to the polling interval, which is acceptable for this game.
+ordinary HTTP requests. It avoids background-job infrastructure, but creates
+regular request traffic and updates may be delayed by up to the polling
+interval, which is acceptable for this game. Deadline transitions occur only
+when a read or other request checks the game state.
