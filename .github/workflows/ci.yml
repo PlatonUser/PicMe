@@ -61,9 +61,49 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Build Docker image
         run: docker build -t picme:ci .
+
+      - name: Start Docker container
+        run: docker run -d --name picme-e2e -p 8001:8000 -e DATABASE_URL=sqlite:///./e2e.db picme:ci
+
+      - name: Wait for health endpoint
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8001/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+
+      - name: Read Python version
+        id: pyver
+        run: echo "version=$(cat .python-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ steps.pyver.outputs.version }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run E2E tests
+        env:
+          BASE_URL: http://127.0.0.1:8001
+        run: pytest -q tests/e2e
+
+      - name: Print container logs
+        if: always()
+        run: docker logs picme-e2e
+
+      - name: Remove Docker container
+        if: always()
+        run: docker rm -f picme-e2e
