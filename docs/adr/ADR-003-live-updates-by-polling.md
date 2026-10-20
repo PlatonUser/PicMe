@@ -1,6 +1,6 @@
 # ADR-003: Live Updates by Polling
 
-- **Status:** Proposed
+- **Status:** Approved
 - **Date:** 2026-10-18
 
 ## Context

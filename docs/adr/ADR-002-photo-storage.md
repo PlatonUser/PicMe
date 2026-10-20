@@ -1,6 +1,6 @@
 # ADR-002: Photo Storage
 
-- **Status:** Proposed
+- **Status:** Approved
 - **Date:** 2026-10-18
 
 ## Context
