@@ -16,8 +16,8 @@ STATUS: done
 ## UC-002
 
 OWNER: A
-PHASE: 2
-STATUS: done
+PHASE: 3
+STATUS: in-progress
 
 Phase 3 prompt slice: implemented in `src/app/domain/prompt.py`; unit and
 integration tests pass (`17 passed`).
