@@ -23,11 +23,18 @@ from app.infrastructure.persistence.sqlalchemy_game_repository import (
     SQLAlchemyGameRepository,
 )
 from app.interfaces.api.games import router as games_router
+from app.interfaces.api.rounds import router as rounds_router, get_clock
+from app.application.round_service import RoundService
+from app.infrastructure.persistence.sqlalchemy_round_repository import SQLAlchemyRoundRepository
+from app.infrastructure.system_clock import SystemClock
 
 
 def create_app(init_db: bool = True) -> FastAPI:
     app = FastAPI(title="PicMe API")
-    app.state.game_service = GameService(SQLAlchemyGameRepository(SessionLocal()))
+    session = SessionLocal()
+    app.state.game_service = GameService(SQLAlchemyGameRepository(session))
+    app.state.round_service = RoundService(app.state.game_service.repository, SQLAlchemyRoundRepository(session), MemoryPhotoStorage(), SystemClock())
+    app.state.game_service.round_service = app.state.round_service
 
     app.add_exception_handler(NotFound, not_found_handler)
     app.add_exception_handler(Conflict, conflict_handler)
@@ -55,5 +62,18 @@ def create_app(init_db: bool = True) -> FastAPI:
         initialize_db()
 
     app.include_router(games_router(app.state.game_service))
+    app.include_router(rounds_router(app.state.round_service))
 
     return app
+
+
+class MemoryPhotoStorage:
+    def __init__(self):
+        self.photos = {}
+
+    def store(self, photo_id, data):
+        self.photos[photo_id] = data
+
+    def get(self, photo_id):
+        return self.photos[photo_id]
+

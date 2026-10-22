@@ -8,6 +8,7 @@ from app.domain.game import Game, Player
 class GameService:
     def __init__(self, repository: GameRepository):
         self.repository = repository
+        self.round_service = None
 
     def create_game(self) -> Game:
         game = Game.create()
@@ -23,7 +24,7 @@ class GameService:
 
     def state(self, code: str) -> dict:
         game = self._get(code)
-        return {
+        result = {
             "code": game.code,
             "phase": game.phase,
             "players": [{"id": player.id, "name": player.name} for player in game.players],
@@ -32,6 +33,10 @@ class GameService:
             "photo": None,
             "voting": None,
         }
+        if self.round_service:
+            result.update(self.round_service.state(code))
+            result["phase"] = self.repository.get(code).phase
+        return result
 
     def set_phase(self, code: str, phase: str) -> None:
         game = self._get(code)
