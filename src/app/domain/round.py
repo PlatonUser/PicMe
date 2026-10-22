@@ -5,6 +5,11 @@ from typing import Callable
 from app.domain.errors import Conflict, InvalidInput, PayloadTooLarge
 
 
+SUPPORTED_DURATIONS = (20, 40, 60)
+JPEG_SIGNATURE = b"\xff\xd8\xff"
+MAX_PHOTO_SIZE = 2 * 1024 * 1024
+
+
 @dataclass
 class Photo:
     player_id: int
@@ -36,14 +41,14 @@ class Round:
         started_at: datetime,
         duration: int = 40,
     ) -> "Round":
-        if duration not in (20, 40, 60):
+        if duration not in SUPPORTED_DURATIONS:
             raise InvalidInput("Duration must be 20, 40, or 60 seconds")
         return cls(
-            prompt,
-            player_ids,
-            started_at,
-            duration,
-            started_at + timedelta(seconds=duration),
+            prompt=prompt,
+            player_ids=player_ids,
+            started_at=started_at,
+            duration=duration,
+            deadline=started_at + timedelta(seconds=duration),
         )
 
     def extend(self) -> None:
@@ -52,16 +57,20 @@ class Round:
     def upload(self, player_id: int, data: bytes, now: datetime) -> None:
         if not self.open or now >= self.deadline:
             raise Conflict("Time's up")
-        if not data.startswith(b"\xff\xd8\xff"):
+        if not data.startswith(JPEG_SIGNATURE):
             raise InvalidInput("Photo must be a JPEG")
-        if len(data) > 2 * 1024 * 1024:
+        if len(data) > MAX_PHOTO_SIZE:
             raise PayloadTooLarge("Photo must be at most 2 MB")
 
-        photo = Photo(player_id, data)
+        photo = Photo(player_id=player_id, data=data)
         self.photos = [existing for existing in self.photos if existing.player_id != player_id]
         self.photos.append(photo)
-        if set(self.player_ids).issubset(photo.player_id for photo in self.photos):
+        if self._all_players_uploaded():
             self.open = False
+
+    def _all_players_uploaded(self) -> bool:
+        uploaded_player_ids = {photo.player_id for photo in self.photos}
+        return set(self.player_ids).issubset(uploaded_player_ids)
 
     def close_if_expired(self, now: datetime, shuffle: Callable[[list[Photo]], list[Photo]]) -> None:
         if self.open and now >= self.deadline:
@@ -70,9 +79,12 @@ class Round:
     def close(self, now: datetime, shuffle: Callable[[list[Photo]], list[Photo]]) -> CloseResult:
         self.open = False
         if not self.photos:
-            return CloseResult("lobby", "No photos this round")
-        if all(photo.position is None for photo in self.photos):
+            return CloseResult(phase="lobby", message="No photos this round")
+        if self._photos_are_unpositioned():
             self.photos = shuffle(self.photos)
             for position, photo in enumerate(self.photos, start=1):
                 photo.position = position
-        return CloseResult("voting")
+        return CloseResult(phase="voting")
+
+    def _photos_are_unpositioned(self) -> bool:
+        return all(photo.position is None for photo in self.photos)
