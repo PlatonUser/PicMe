@@ -95,7 +95,9 @@ def test_complete_game_ends_with_points_ranked_scoreboard_and_correct_me(tiny_jp
     assert anna_scoreboard.status_code == 200
     assert ben_scoreboard.status_code == 200
     assert cara_scoreboard.status_code == 200
-       expected = [
+
+
+    expected = [
         {"player_id": anna["player_id"], "name": "Anna", "points": 4, "rank": 1},
         {"player_id": ben["player_id"], "name": "Ben", "points": 2, "rank": 2},
         {"player_id": cara["player_id"], "name": "Cara", "points": 0, "rank": 3},
