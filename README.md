@@ -24,4 +24,4 @@ before code and open pull requests for review before merging.
 
 ## Status
 
-Sprint 1 (foundation) is in progress.
+Sprint 2 (use cases with TDD) in progress.

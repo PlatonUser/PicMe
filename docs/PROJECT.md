@@ -109,6 +109,109 @@ the endpoint is explicitly multipart.
 | `GET /games/{code}/scoreboard?player_id=` | Read final ranked scoreboard | UC-004 | query `player_id` | `200` with full ranking and requesting player's rank/points |
 | `POST /games/{code}/play-again` | Reset rounds and scores while retaining players | UC-004 | none | `200` with lobby phase |
 
+### Request and response examples
+
+Request
+Success response
+POST /games
+(no body)
+201
+{"code": "K7M2QX","host_token": "…", "phase":"lobby"}
+POST /games/{code}/players
+{"name":"Anna"}
+201
+{"player_id": 1, "name":"Anna"}
+Sprint 2 overview
+Page 3 of 6
+Request
+Success response
+GET /games/{code}/state
+200
+see below
+GET /prompts/categories
+200
+[{"id": "food", "name":"Food"}, …]
+POST /games/{code}/rounds
+(host)
+{"category": "food"}
+or
+{"category":"Shuffle"}
+or
+{"prompt": "My own text"}
+,optional
+"duration": 20 | 40 | 60
+(default40)
+201
+{"round_number": 1, "prompt":"…", "category": "Food", "hint":null, "upload_deadline": "…","phase": "uploading"}
+POST /games/{code}/rounds/current/photos
+multipart:
+player_id
+,
+photo
+(JPEG file)
+201
+{"photo_id": 7, "player_id":1}
+POST /games/{code}/rounds/current/extend
+(host)
+200
+{"upload_deadline": "…"}
+POST /games/{code}/rounds/current/close
+(host)
+200
+{"phase": "voting"}
+or
+{"phase": "lobby", "message": "Nophotos this round"}
+GET /photos/{photo_id}/image
+200
+JPEG bytes,
+Content-Type:image/jpeg
+POST /games/{code}/votes
+{"player_id":2, "guessed_player_id": 1}
+201
+{"accepted": true}
+GET /games/{code}/votes/progress
+(host)
+200
+{"voted": 4, "eligible": 7}
+POST /games/{code}/voting/close
+(host)
+200
+{"phase": "reveal","uploader_name": "Anna"}
+POST /games/{code}/photos/next
+(host)
+200
+{"phase": "voting", "position":2}
+; on the last photo
+409
+POST /games/{code}/lobby
+(host)
+200
+{"phase": "lobby"}
+POST /games/{code}/end
+(host)
+200
+{"phase": "scoreboard"}
+GET /games/{code}/scoreboard?player_id=2
+200
+{"players": [{"player_id": 1,"name": "Anna", "points": 3, "rank":1}, …], "me": {"player_id": 2,"name": "Ben", "points": 1, "rank":2}}
+POST /games/{code}/play-again
+(host)
+200
+{"phase": "lobby"}
+Sprint 2 overview
+Page 4 of 6
+Game state
+(
+GET /games/{code}/state
+). Fields that don't apply in the current phase are
+null
+:
+{ "code": "K7M2QX", "phase": "voting", "players": [{"id": 1, "name": "Anna"}, {"id": 2, "name": "Ben"}], "message": null, "round": { "round_number": 1, "prompt": "Your go-to drink", "category": "Food", "hint": null, "upload_deadline": "2026-10-21T14:03:20Z", "server_time": "2026-10-21T14:03:41Z", "uploaded_count": 2 }, "photo": {"id": 7, "position": 1, "total": 2, "uploader_name": null}, "voting": {"voted": 1, "eligible": 1}}
+uploader_name
+is filled only in
+reveal
+. The state never contains points or ranks.
+
 ## Module layout
 
 ```text
