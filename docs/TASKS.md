@@ -15,7 +15,7 @@ STATUS: done
 
 ## UC-002
 
-OWNER: B
+OWNER: A
 PHASE: 2
 STATUS: done
 
