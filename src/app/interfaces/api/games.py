@@ -1,0 +1,28 @@
+from fastapi import APIRouter
+from pydantic import BaseModel
+
+from app.application.game_service import GameService
+
+
+class JoinGameRequest(BaseModel):
+    name: str
+
+
+def router(service: GameService) -> APIRouter:
+    api = APIRouter(prefix="/games")
+
+    @api.post("", status_code=201)
+    def create_game():
+        game = service.create_game()
+        return {"code": game.code, "host_token": game.host_token, "phase": game.phase}
+
+    @api.post("/{code}/players", status_code=201)
+    def join_game(code: str, request: JoinGameRequest):
+        player = service.join_game(code, request.name)
+        return {"player_id": player.id, "name": player.name}
+
+    @api.get("/{code}/state")
+    def game_state(code: str):
+        return service.state(code)
+
+    return api
