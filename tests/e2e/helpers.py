@@ -47,3 +47,46 @@ def vote(code, player_id, guessed_player_id):
 
 def state(code):
     return httpx.get(_url(f"/games/{code}/state"))
+
+
+def close_voting(game):
+    return httpx.post(
+        _url(f"/games/{game['code']}/voting/close"),
+        headers={"X-Host-Token": game["host_token"]},
+    )
+
+
+def vote_progress(code):
+    return httpx.get(_url(f"/games/{code}/votes/progress"))
+
+
+def next_photo(game):
+    return httpx.post(
+        _url(f"/games/{game['code']}/photos/next"),
+        headers={"X-Host-Token": game["host_token"]},
+    )
+
+
+def return_to_lobby(game):
+    return httpx.post(
+        _url(f"/games/{game['code']}/lobby"),
+        headers={"X-Host-Token": game["host_token"]},
+    )
+
+
+def end_game(game):
+    return httpx.post(
+        _url(f"/games/{game['code']}/end"),
+        headers={"X-Host-Token": game["host_token"]},
+    )
+
+
+def scoreboard(code, player_id):
+    return httpx.get(_url(f"/games/{code}/scoreboard"), params={"player_id": player_id})
+
+
+def play_again(game):
+    return httpx.post(
+        _url(f"/games/{game['code']}/play-again"),
+        headers={"X-Host-Token": game["host_token"]},
+    )
