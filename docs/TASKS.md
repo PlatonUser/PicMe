@@ -22,6 +22,10 @@ STATUS: done
 Phase 3 prompt slice: implemented in `src/app/domain/prompt.py`; unit and
 integration tests pass (`17 passed`).
 
+UC-001 phase 3 STEP 1: added integration and unit tests for create/join/state,
+domain rules, and `GameService`. RED run: `2` import errors during collection
+because `app.domain.game` and `app.application.game_service` are not implemented.
+
 ## UC-003
 
 OWNER: A
