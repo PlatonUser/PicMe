@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Integer, LargeBinary, String, JSON
+from sqlalchemy import JSON, ForeignKey, Integer, LargeBinary, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database import Base
@@ -19,7 +19,9 @@ class RoundModel(Base):
     deadline: Mapped[datetime] = mapped_column(nullable=False)
     open: Mapped[bool] = mapped_column(nullable=False, default=True)
     player_ids: Mapped[list[int]] = mapped_column(JSON, nullable=False, default=list)
-    photos: Mapped[list["PhotoModel"]] = relationship(cascade="all, delete-orphan", order_by="PhotoModel.position")
+    photos: Mapped[list["PhotoModel"]] = relationship(
+        cascade="all, delete-orphan", order_by="PhotoModel.position"
+    )
 
 
 class PhotoModel(Base):

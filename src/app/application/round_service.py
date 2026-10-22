@@ -49,7 +49,8 @@ class RoundService:
         self._host(game, host_token)
         if game.phase != "lobby":
             raise Conflict("Game is not in the lobby")
-        used = {round_.prompt for round_ in self.rounds.for_game(code)}
+        existing_rounds = self.rounds.for_game(code)
+        used = {existing.prompt for existing in existing_rounds}
         if prompt is not None:
             picked = custom_prompt(prompt)
             if picked.text in used:
@@ -59,7 +60,7 @@ class RoundService:
             picked = choose_prompt(selected, used, random.choice)
         round_ = Round.start(picked.text, [player.id for player in game.players], self.clock.now(), duration)
         round_.category = picked.category
-        round_.round_number = len(self.rounds.for_game(code)) + 1
+        round_.round_number = len(existing_rounds) + 1
         round_.game_code = code
         self.rounds.add(round_)
         game.phase = "uploading"
@@ -90,10 +91,11 @@ class RoundService:
         round_ = self.rounds.current(code)
         if round_ is None:
             return CloseResult(game.phase)
-        round_.close_if_expired(self._now(round_), self._shuffle)
+        now = self._now(round_)
+        round_.close_if_expired(now, self._shuffle)
         if round_.open:
             return CloseResult(game.phase)
-        result = round_.close(self._now(round_), self._shuffle)
+        result = round_.close(now, self._shuffle)
         game.phase = result.phase
         self.rounds.save(round_)
         self.games.save(game)
@@ -129,7 +131,7 @@ class RoundService:
         game = self._game(code)
         round_ = self.rounds.current(code)
         if round_ is None:
-            return {"round": None, "photo": None, "message": None}
+            return {"phase": game.phase, "round": None, "photo": None, "message": None}
         result = self.check_deadline(code)
         round_ = self.rounds.current(code)
         photo = None
@@ -137,7 +139,7 @@ class RoundService:
             current = min(round_.photos, key=lambda item: item.position or 1)
             photo = {"id": getattr(current, "id", None), "position": current.position,
                      "total": len(round_.photos), "uploader_name": None}
-        return {"round": {"round_number": round_.round_number, "prompt": round_.prompt,
+        return {"phase": result.phase, "round": {"round_number": round_.round_number, "prompt": round_.prompt,
                            "category": round_.category, "hint": None,
                            "upload_deadline": round_.deadline, "server_time": round_.started_at,
                            "uploaded_count": len(round_.photos)}, "photo": photo,

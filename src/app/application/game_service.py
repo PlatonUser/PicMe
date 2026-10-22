@@ -1,4 +1,5 @@
 import secrets
+from collections.abc import Callable
 
 from app.application.ports.game_repository import GameRepository
 from app.domain.errors import NotFound
@@ -6,9 +7,13 @@ from app.domain.game import Game, Player
 
 
 class GameService:
-    def __init__(self, repository: GameRepository):
+    def __init__(
+        self,
+        repository: GameRepository,
+        round_state_provider: Callable[[str], dict] | None = None,
+    ):
         self.repository = repository
-        self.round_service = None
+        self.round_state_provider = round_state_provider
 
     def create_game(self) -> Game:
         game = Game.create()
@@ -33,9 +38,8 @@ class GameService:
             "photo": None,
             "voting": None,
         }
-        if self.round_service:
-            result.update(self.round_service.state(code))
-            result["phase"] = self.repository.get(code).phase
+        if self.round_state_provider:
+            result.update(self.round_state_provider(code))
         return result
 
     def set_phase(self, code: str, phase: str) -> None:

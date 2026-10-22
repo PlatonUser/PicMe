@@ -32,9 +32,14 @@ from app.infrastructure.system_clock import SystemClock
 def create_app(init_db: bool = True) -> FastAPI:
     app = FastAPI(title="PicMe API")
     session = SessionLocal()
-    app.state.game_service = GameService(SQLAlchemyGameRepository(session))
-    app.state.round_service = RoundService(app.state.game_service.repository, SQLAlchemyRoundRepository(session), MemoryPhotoStorage(), SystemClock())
-    app.state.game_service.round_service = app.state.round_service
+    game_repository = SQLAlchemyGameRepository(session)
+    app.state.round_service = RoundService(
+        game_repository,
+        SQLAlchemyRoundRepository(session),
+        MemoryPhotoStorage(),
+        SystemClock(),
+    )
+    app.state.game_service = GameService(game_repository, app.state.round_service.state)
 
     app.add_exception_handler(NotFound, not_found_handler)
     app.add_exception_handler(Conflict, conflict_handler)
@@ -76,4 +81,3 @@ class MemoryPhotoStorage:
 
     def get(self, photo_id):
         return self.photos[photo_id]
-

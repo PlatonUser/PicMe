@@ -5,11 +5,11 @@ from app.domain.round import Round
 
 class RoundRepository(ABC):
     @abstractmethod
-    def add(self, game_code: str, round_: Round) -> None:
+    def add(self, round_: Round) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def save(self, game_code: str, round_: Round) -> None:
+    def save(self, round_: Round) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -19,4 +19,3 @@ class RoundRepository(ABC):
     @abstractmethod
     def current(self, game_code: str) -> Round | None:
         raise NotImplementedError
-
