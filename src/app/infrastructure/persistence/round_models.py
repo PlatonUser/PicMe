@@ -26,6 +26,7 @@ class RoundModel(Base):
 
 class PhotoModel(Base):
     __tablename__ = "photos"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     round_id: Mapped[int] = mapped_column(ForeignKey("rounds.id"), nullable=False)

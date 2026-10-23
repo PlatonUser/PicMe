@@ -26,6 +26,9 @@ class SQLAlchemyRoundRepository(RoundRepository):
         self.session.commit()
         round_.id = model.id
         self._sync_photos(model, round_)
+        self.session.flush()
+        self._assign_photo_ids(model, round_)
+        self.session.commit()
 
     def save(self, round_: Round) -> None:
         model = self.session.get(RoundModel, round_.id)
@@ -35,6 +38,8 @@ class SQLAlchemyRoundRepository(RoundRepository):
         model.open = round_.open
         model.player_ids = round_.player_ids
         self._sync_photos(model, round_)
+        self.session.flush()
+        self._assign_photo_ids(model, round_)
         self.session.commit()
 
     def for_game(self, game_code: str) -> list[Round]:
@@ -54,16 +59,29 @@ class SQLAlchemyRoundRepository(RoundRepository):
         return self._to_domain(model) if model else None
 
     def _sync_photos(self, model: RoundModel, round_: Round) -> None:
-        model.photos.clear()
-        model.photos.extend(
-            PhotoModel(
-                id=getattr(photo, "id", None),
-                player_id=photo.player_id,
-                data=photo.data,
-                position=photo.position,
-            )
+        photos_by_id = {
+            photo.id: photo
             for photo in round_.photos
+            if getattr(photo, "id", None) is not None
+        }
+        for photo_model in list(model.photos):
+            photo = photos_by_id.pop(photo_model.id, None)
+            if photo is None:
+                self.session.delete(photo_model)
+                continue
+            photo_model.data = photo.data
+            photo_model.position = photo.position
+        model.photos.extend(
+            PhotoModel(player_id=photo.player_id, data=photo.data, position=photo.position)
+            for photo in round_.photos
+            if getattr(photo, "id", None) is None
         )
+
+    @staticmethod
+    def _assign_photo_ids(model: RoundModel, round_: Round) -> None:
+        ids_by_player = {photo_model.player_id: photo_model.id for photo_model in model.photos}
+        for photo in round_.photos:
+            photo.id = ids_by_player[photo.player_id]
 
     @staticmethod
     def _to_domain(model: RoundModel) -> Round:

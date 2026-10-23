@@ -41,7 +41,6 @@ class RoundService:
         self.rounds = rounds
         self.storage = storage
         self.clock = clock
-        self._next_photo_id = 1
 
     def start_round(self, code: str, host_token: str, category: str | None = None,
                     prompt: str | None = None, duration: int = 40) -> RoundResult:
@@ -80,9 +79,7 @@ class RoundService:
         round_.upload(player_id, data, self._now(round_))
         self.rounds.save(round_)
         photo = next(photo for photo in round_.photos if photo.player_id == player_id and photo.data == data)
-        photo_id = self._next_photo_id
-        self._next_photo_id += 1
-        photo.id = photo_id
+        photo_id = getattr(photo, "id", id(photo))
         self.storage.store(photo_id, data)
         return PhotoResult(photo_id, player_id, data)
 
@@ -140,9 +137,9 @@ class RoundService:
             photo = {"id": getattr(current, "id", None), "position": current.position,
                      "total": len(round_.photos), "uploader_name": None}
         return {"phase": result.phase, "round": {"round_number": round_.round_number, "prompt": round_.prompt,
-                           "category": round_.category, "hint": None,
-                           "upload_deadline": round_.deadline, "server_time": round_.started_at,
-                           "uploaded_count": len(round_.photos)}, "photo": photo,
+                            "category": round_.category, "hint": None,
+                            "upload_deadline": round_.deadline, "server_time": self.clock.now(),
+                            "uploaded_count": len(round_.photos)}, "photo": photo,
                 "message": result.message}
 
     def image(self, photo_id: int) -> bytes:
