@@ -1,16 +1,16 @@
 # TASKS.md
 
 PHASE: 3
-STATUS: done
+STATUS: in-progress
 
 (0=Bootstrap | 1=Specify | 2=Design | 3=Develop | 4=Validate | 5=Deploy)
 
-Sprint: 2 (develop with TDD)
+Sprint: 3 (finish use cases, deploy, UI)
 
 ## UC-001
 
 OWNER: A
-PHASE: 2
+PHASE: 3
 STATUS: done
 
 ## UC-002
@@ -19,31 +19,27 @@ OWNER: A
 PHASE: 3
 STATUS: done
 
-Phase 3 prompt slice: implemented in `src/app/domain/prompt.py`; unit and
-integration tests pass (`17 passed`).
-
-Phase 3 STEP 2: implemented round persistence, photo storage, clock ports,
-round service, round API, and round-aware game state. Full test suite passes
-(`97 passed, 1 skipped`).
-
-UC-001 phase 3 STEP 1: added integration and unit tests for create/join/state,
-domain rules, and `GameService`. RED run: `2` import errors during collection
-because `app.domain.game` and `app.application.game_service` are not implemented.
+Prompt catalog in `src/app/domain/prompt.py`; round persistence, photo upload,
+clock port, round service, round API and round-aware game state implemented.
+Unit and integration tests pass (97 passed).
 
 ## UC-003
 
 OWNER: A
-PHASE: 2
-STATUS: done
+PHASE: 3
+STATUS: ready
 
 ## UC-004
 
 OWNER: A
-PHASE: 2
-STATUS: done
+PHASE: 3
+STATUS: ready
 
 ## Delivery (acceptance tests, deployment, UI)
 
 OWNER: B
 PHASE: 4
 STATUS: in-progress
+
+Acceptance tests for UC-001 to UC-004 in `tests/e2e/` merged; UC-001/002 pass
+against the container, UC-003/004 marked xfail until implemented.
