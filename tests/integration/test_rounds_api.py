@@ -223,7 +223,9 @@ def test_missing_or_incorrect_host_token_returns_forbidden(client, token):
     assert response.status_code == 403
     after = client.get(f"/games/{game['code']}/state").json()
     assert after["phase"] == before["phase"]
-    assert after["round"] == before["round"]
+    assert {key: value for key, value in after["round"].items() if key != "server_time"} == {
+        key: value for key, value in before["round"].items() if key != "server_time"
+    }
     assert after["round"]["uploaded_count"] == before["round"]["uploaded_count"]
 
 
@@ -247,7 +249,9 @@ def test_unknown_player_returns_not_found(client, tiny_jpeg):
     assert response.status_code == 404
     after = client.get(f"/games/{game['code']}/state").json()
     assert after["phase"] == before["phase"]
-    assert after["round"] == before["round"]
+    assert {key: value for key, value in after["round"].items() if key != "server_time"} == {
+        key: value for key, value in before["round"].items() if key != "server_time"
+    }
     assert after["round"]["uploaded_count"] == before["round"]["uploaded_count"]
 
 
@@ -261,7 +265,9 @@ def test_non_jpeg_upload_returns_unprocessable_entity(client):
     assert response.status_code == 422
     after = client.get(f"/games/{game['code']}/state").json()
     assert after["phase"] == before["phase"]
-    assert after["round"] == before["round"]
+    assert {key: value for key, value in after["round"].items() if key != "server_time"} == {
+        key: value for key, value in before["round"].items() if key != "server_time"
+    }
     assert after["round"]["uploaded_count"] == before["round"]["uploaded_count"]
 
 
@@ -275,7 +281,9 @@ def test_upload_larger_than_two_megabytes_returns_payload_too_large(client):
     assert response.status_code == 413
     after = client.get(f"/games/{game['code']}/state").json()
     assert after["phase"] == before["phase"]
-    assert after["round"] == before["round"]
+    assert {key: value for key, value in after["round"].items() if key != "server_time"} == {
+        key: value for key, value in before["round"].items() if key != "server_time"
+    }
     assert after["round"]["uploaded_count"] == before["round"]["uploaded_count"]
 
 
