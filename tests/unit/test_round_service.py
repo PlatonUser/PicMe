@@ -47,6 +47,16 @@ def test_start_round_never_reuses_a_prompt_in_the_same_game():
         service.start_round(game.code, "host", prompt=first.prompt)
 
 
+def test_state_server_time_uses_the_current_clock_time():
+    service, game, _, clock = service_with_game()
+    service.start_round(game.code, "host", category="food")
+    clock.advance(5)
+
+    state = service.state(game.code)
+
+    assert state["round"]["server_time"] == clock.now()
+
+
 def test_start_round_rejects_invalid_duration_and_empty_custom_prompt():
     service, game, _, _ = service_with_game()
 

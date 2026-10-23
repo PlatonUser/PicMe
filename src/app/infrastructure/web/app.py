@@ -26,6 +26,7 @@ from app.interfaces.api.games import router as games_router
 from app.interfaces.api.rounds import router as rounds_router, get_clock
 from app.application.round_service import RoundService
 from app.infrastructure.persistence.sqlalchemy_round_repository import SQLAlchemyRoundRepository
+from app.infrastructure.persistence.sqlalchemy_photo_storage import SQLAlchemyPhotoStorage
 from app.infrastructure.system_clock import SystemClock
 
 
@@ -36,7 +37,7 @@ def create_app(init_db: bool = True) -> FastAPI:
     app.state.round_service = RoundService(
         game_repository,
         SQLAlchemyRoundRepository(session),
-        MemoryPhotoStorage(),
+        SQLAlchemyPhotoStorage(session),
         SystemClock(),
     )
     app.state.game_service = GameService(game_repository, app.state.round_service.state)
@@ -70,14 +71,3 @@ def create_app(init_db: bool = True) -> FastAPI:
     app.include_router(rounds_router(app.state.round_service))
 
     return app
-
-
-class MemoryPhotoStorage:
-    def __init__(self):
-        self.photos = {}
-
-    def store(self, photo_id, data):
-        self.photos[photo_id] = data
-
-    def get(self, photo_id):
-        return self.photos[photo_id]
