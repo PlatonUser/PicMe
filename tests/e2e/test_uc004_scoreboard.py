@@ -16,6 +16,7 @@ from tests.e2e.helpers import (
     scoreboard,
     start_round,
     state,
+    state_without_server_time,
     upload_photo,
     vote,
 )
@@ -159,18 +160,18 @@ def test_play_again_preserves_players_resets_game_to_lobby_and_hides_old_scorebo
 @pytest.mark.xfail(reason="UC-004 not implemented yet", strict=False)
 def test_scoreboard_errors_cover_early_unknown_game_and_host_tokens(tiny_jpeg):
     game, anna, _, _ = _complete_game(tiny_jpeg)
-    before = state(game["code"]).json()
+    before = state_without_server_time(game["code"])
     early = scoreboard(game["code"], anna["player_id"])
-    after_early = state(game["code"]).json()
+    after_early = state_without_server_time(game["code"])
     unknown = scoreboard("ZZZZZZ", anna["player_id"])
     assert early.status_code == 409
     assert after_early == before
     assert unknown.status_code == 404
 
-    before_end_errors = state(game["code"]).json()
+    before_end_errors = state_without_server_time(game["code"])
     missing = end_game_with_token(game)
     wrong = end_game_with_token(game, "wrong-token")
-    after_end_errors = state(game["code"]).json()
+    after_end_errors = state_without_server_time(game["code"])
     assert missing.status_code == 403
     assert wrong.status_code == 403
     assert after_end_errors == before_end_errors
@@ -181,10 +182,10 @@ def test_play_again_requires_a_valid_host_token(tiny_jpeg):
     game, _, _, _ = _complete_game(tiny_jpeg)
     assert end_game(game).status_code == 200
 
-    before = state(game["code"]).json()
+    before = state_without_server_time(game["code"])
     missing = play_again_with_token(game)
     wrong = play_again_with_token(game, "wrong-token")
-    after = state(game["code"]).json()
+    after = state_without_server_time(game["code"])
 
     assert missing.status_code == 403
     assert wrong.status_code == 403

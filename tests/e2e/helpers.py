@@ -65,6 +65,13 @@ def state(code):
     return httpx.get(_url(f"/games/{code}/state"))
 
 
+def state_without_server_time(code):
+    body = state(code).json()
+    if body["round"] is not None:
+        body["round"].pop("server_time", None)
+    return body
+
+
 def close_voting(game):
     return httpx.post(
         _url(f"/games/{game['code']}/voting/close"),
