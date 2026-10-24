@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Callable
 
 from app.domain.errors import Conflict, InvalidInput, PayloadTooLarge
+from app.domain.time import as_utc
 
 
 SUPPORTED_DURATIONS = (20, 40, 60)
@@ -55,7 +56,8 @@ class Round:
         self.deadline += timedelta(seconds=10)
 
     def upload(self, player_id: int, data: bytes, now: datetime) -> None:
-        if not self.open or now >= self.deadline:
+        now = as_utc(now)
+        if not self.open or as_utc(now) >= as_utc(self.deadline):
             raise Conflict("Time's up")
         if not data.startswith(JPEG_SIGNATURE):
             raise InvalidInput("Photo must be a JPEG")
@@ -73,10 +75,12 @@ class Round:
         return set(self.player_ids).issubset(uploaded_player_ids)
 
     def close_if_expired(self, now: datetime, shuffle: Callable[[list[Photo]], list[Photo]]) -> None:
-        if self.open and now >= self.deadline:
+        now = as_utc(now)
+        if self.open and as_utc(now) >= as_utc(self.deadline):
             self.close(now, shuffle)
 
     def close(self, now: datetime, shuffle: Callable[[list[Photo]], list[Photo]]) -> CloseResult:
+        now = as_utc(now)
         self.open = False
         if not self.photos:
             return CloseResult(phase="lobby", message="No photos this round")

@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from app.application.round_service import RoundService
 from app.domain.prompt import CATEGORIES
+from app.domain.time import as_utc
 from app.infrastructure.system_clock import SystemClock
 
 
@@ -41,7 +42,7 @@ def router(service: RoundService) -> APIRouter:
             "prompt": result.prompt,
             "category": result.category,
             "hint": result.hint,
-            "upload_deadline": result.upload_deadline,
+            "upload_deadline": as_utc(result.upload_deadline),
             "phase": result.phase,
         }
 
@@ -63,7 +64,7 @@ def router(service: RoundService) -> APIRouter:
         clock=Depends(get_clock),
     ):
         service.clock = clock
-        return {"upload_deadline": service.extend_round(code, x_host_token or "")}
+        return {"upload_deadline": as_utc(service.extend_round(code, x_host_token or ""))}
 
     @api.post("/games/{code}/rounds/current/close")
     def close_round(

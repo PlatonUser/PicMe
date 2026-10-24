@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.application.game_service import GameService
+from app.domain.time import as_utc
 
 
 class JoinGameRequest(BaseModel):
@@ -23,6 +24,10 @@ def router(service: GameService) -> APIRouter:
 
     @api.get("/{code}/state")
     def game_state(code: str):
-        return service.state(code)
+        state = service.state(code)
+        if state["round"] is not None:
+            state["round"]["upload_deadline"] = as_utc(state["round"]["upload_deadline"])
+            state["round"]["server_time"] = as_utc(state["round"]["server_time"])
+        return state
 
     return api

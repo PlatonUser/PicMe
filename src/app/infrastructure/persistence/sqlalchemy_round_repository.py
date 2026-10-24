@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.application.ports.round_repository import RoundRepository
 from app.domain.round import Photo, Round
+from app.domain.time import as_utc
 from app.infrastructure.persistence.round_models import PhotoModel, RoundModel
 
 
@@ -16,9 +17,9 @@ class SQLAlchemyRoundRepository(RoundRepository):
             number=round_.round_number,
             prompt=round_.prompt,
             category=round_.category,
-            started_at=round_.started_at,
+            started_at=as_utc(round_.started_at),
             duration=round_.duration,
-            deadline=round_.deadline,
+            deadline=as_utc(round_.deadline),
             open=round_.open,
             player_ids=round_.player_ids,
         )
@@ -34,7 +35,7 @@ class SQLAlchemyRoundRepository(RoundRepository):
         model = self.session.get(RoundModel, round_.id)
         if model is None:
             return self.add(round_)
-        model.deadline = round_.deadline
+        model.deadline = as_utc(round_.deadline)
         model.open = round_.open
         model.player_ids = round_.player_ids
         self._sync_photos(model, round_)
@@ -85,8 +86,8 @@ class SQLAlchemyRoundRepository(RoundRepository):
 
     @staticmethod
     def _to_domain(model: RoundModel) -> Round:
-        round_ = Round(model.prompt, model.player_ids, model.started_at, model.duration,
-                       model.deadline, model.open)
+        round_ = Round(model.prompt, model.player_ids, as_utc(model.started_at), model.duration,
+                       as_utc(model.deadline), model.open)
         round_.id, round_.round_number, round_.category = model.id, model.number, model.category
         round_.photos = []
         for item in model.photos:
