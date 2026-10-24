@@ -166,3 +166,31 @@ def test_closing_does_not_reshuffle_already_positioned_photos():
 
     assert [(photo.player_id, photo.position) for photo in round_.photos] == positions
     assert len(calls) == 1
+
+
+def test_voting_starts_at_the_first_photo_position():
+    round_ = Round.start("A prompt", [1, 2], START)
+    round_.upload(1, JPEG, START + timedelta(seconds=1))
+    round_.close(START + timedelta(seconds=2), lambda photos: photos)
+
+    assert round_.current_photo_position == 1
+
+
+def test_advancing_moves_to_the_next_photo_position():
+    round_ = Round.start("A prompt", [1, 2], START)
+    round_.upload(1, JPEG, START + timedelta(seconds=1))
+    round_.upload(2, JPEG, START + timedelta(seconds=1))
+    round_.close(START + timedelta(seconds=2), lambda photos: photos)
+
+    round_.advance_photo()
+
+    assert round_.current_photo_position == 2
+
+
+def test_advancing_after_the_last_photo_raises_conflict():
+    round_ = Round.start("A prompt", [1, 2], START)
+    round_.upload(1, JPEG, START + timedelta(seconds=1))
+    round_.close(START + timedelta(seconds=2), lambda photos: photos)
+
+    with pytest.raises(Conflict):
+        round_.advance_photo()
