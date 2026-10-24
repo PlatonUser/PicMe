@@ -86,12 +86,16 @@ class RoundService:
 
     def check_deadline(self, code: str) -> CloseResult:
         game = self._game(code)
+        if game.phase != "uploading":
+            return CloseResult(game.phase)
         round_ = self.rounds.current(code)
         if round_ is None:
             return CloseResult(game.phase)
         now = self._now(round_)
         round_.close_if_expired(now, self._shuffle)
         if round_.open:
+            return CloseResult(game.phase)
+        if game.phase != "uploading":
             return CloseResult(game.phase)
         result = round_.close(now, self._shuffle)
         game.phase = result.phase
@@ -131,7 +135,8 @@ class RoundService:
         round_ = self.rounds.current(code)
         photo = None
         if round_.photos:
-            current = min(round_.photos, key=lambda item: item.position or 1)
+            position = round_.current_photo_position or 1
+            current = next(item for item in round_.photos if item.position == position)
             photo = {"id": getattr(current, "id", None), "position": current.position,
                      "total": len(round_.photos), "uploader_name": None}
         return {"phase": result.phase, "round": {"round_number": round_.round_number, "prompt": round_.prompt,
@@ -156,9 +161,7 @@ class RoundService:
 
     @staticmethod
     def _shuffle(photos):
-        result = list(photos)
-        random.shuffle(result)
-        return result
+        return list(photos)
 
     def _game(self, code: str):
         game = self.games.get(code)

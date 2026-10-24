@@ -22,6 +22,7 @@ class SQLAlchemyRoundRepository(RoundRepository):
             deadline=as_utc(round_.deadline),
             open=round_.open,
             player_ids=round_.player_ids,
+            current_photo_position=round_.current_photo_position,
         )
         self.session.add(model)
         self.session.commit()
@@ -38,6 +39,7 @@ class SQLAlchemyRoundRepository(RoundRepository):
         model.deadline = as_utc(round_.deadline)
         model.open = round_.open
         model.player_ids = round_.player_ids
+        model.current_photo_position = round_.current_photo_position
         self._sync_photos(model, round_)
         self.session.flush()
         self._assign_photo_ids(model, round_)
@@ -89,6 +91,7 @@ class SQLAlchemyRoundRepository(RoundRepository):
         round_ = Round(model.prompt, model.player_ids, as_utc(model.started_at), model.duration,
                        as_utc(model.deadline), model.open)
         round_.id, round_.round_number, round_.category = model.id, model.number, model.category
+        round_.current_photo_position = model.current_photo_position
         round_.photos = []
         for item in model.photos:
             photo = Photo(item.player_id, item.data, item.position)
