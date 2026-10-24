@@ -27,8 +27,10 @@ Unit and integration tests pass (97 passed).
 
 OWNER: A
 PHASE: 3
-STATUS: in-progress
+STATUS: done
 
+Votes table, VotingService and votes API (vote, progress, close voting, next photo,
+back to lobby); unit, integration and e2e tests pass.
 ## UC-004
 
 OWNER: A
