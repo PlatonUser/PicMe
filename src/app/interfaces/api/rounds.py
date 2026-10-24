@@ -1,10 +1,11 @@
+from collections.abc import Callable
+
 from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
 from pydantic import BaseModel
 
 from app.application.round_service import RoundService
 from app.domain.prompt import CATEGORIES
 from app.domain.time import as_utc
-from app.infrastructure.system_clock import SystemClock
 
 
 class StartRoundRequest(BaseModel):
@@ -13,11 +14,7 @@ class StartRoundRequest(BaseModel):
     duration: int = 40
 
 
-def get_clock():
-    return SystemClock()
-
-
-def router(service: RoundService) -> APIRouter:
+def router(service_dependency: Callable[..., RoundService]) -> APIRouter:
     api = APIRouter()
 
     @api.get("/prompts/categories")
@@ -31,9 +28,8 @@ def router(service: RoundService) -> APIRouter:
         code: str,
         request: StartRoundRequest,
         x_host_token: str | None = Header(default=None),
-        clock=Depends(get_clock),
+        service: RoundService = Depends(service_dependency),
     ):
-        service.clock = clock
         result = service.start_round(
             code, x_host_token or "", request.category, request.prompt, request.duration
         )
@@ -51,9 +47,8 @@ def router(service: RoundService) -> APIRouter:
         code: str,
         player_id: int = Form(...),
         photo: UploadFile = File(...),
-        clock=Depends(get_clock),
+        service: RoundService = Depends(service_dependency),
     ):
-        service.clock = clock
         result = service.upload_photo(code, player_id, await photo.read())
         return {"photo_id": result.photo_id, "player_id": result.player_id}
 
@@ -61,18 +56,16 @@ def router(service: RoundService) -> APIRouter:
     def extend_round(
         code: str,
         x_host_token: str | None = Header(default=None),
-        clock=Depends(get_clock),
+        service: RoundService = Depends(service_dependency),
     ):
-        service.clock = clock
         return {"upload_deadline": as_utc(service.extend_round(code, x_host_token or ""))}
 
     @api.post("/games/{code}/rounds/current/close")
     def close_round(
         code: str,
         x_host_token: str | None = Header(default=None),
-        clock=Depends(get_clock),
+        service: RoundService = Depends(service_dependency),
     ):
-        service.clock = clock
         result = service.close_round(code, x_host_token or "")
         response = {"phase": result.phase}
         if result.message:
@@ -80,7 +73,7 @@ def router(service: RoundService) -> APIRouter:
         return response
 
     @api.get("/photos/{photo_id}/image")
-    def image(photo_id: int):
+    def image(photo_id: int, service: RoundService = Depends(service_dependency)):
         from fastapi.responses import Response
 
         return Response(service.image(photo_id), media_type="image/jpeg")
