@@ -16,6 +16,9 @@ class Vote:
 
     @property
     def eligible_voters(self) -> set[int]:
+        return self._eligible_voter_ids()
+
+    def _eligible_voter_ids(self) -> set[int]:
         return self.player_ids - {self.uploader_id}
 
     def cast(self, voter_id: int, guessed_player_id: int) -> None:
@@ -31,7 +34,7 @@ class Vote:
         return self.guesses.get(voter_id)
 
     def progress(self) -> tuple[int, int]:
-        return len(self.guesses), len(self.eligible_voters)
+        return len(self.guesses), len(self._eligible_voter_ids())
 
     def is_complete(self) -> bool:
-        return len(self.guesses) == len(self.eligible_voters)
+        return len(self.guesses) == len(self._eligible_voter_ids())

@@ -57,35 +57,41 @@ class Round:
         self.deadline += timedelta(seconds=10)
 
     def upload(self, player_id: int, data: bytes, now: datetime) -> None:
-        now = as_utc(now)
-        if not self.open or as_utc(now) >= as_utc(self.deadline):
+        current_time = as_utc(now)
+        if not self.open or current_time >= as_utc(self.deadline):
             raise Conflict("Time's up")
         if not data.startswith(JPEG_SIGNATURE):
             raise InvalidInput("Photo must be a JPEG")
         if len(data) > MAX_PHOTO_SIZE:
             raise PayloadTooLarge("Photo must be at most 2 MB")
 
-        photo = Photo(player_id=player_id, data=data)
-        self.photos = [existing for existing in self.photos if existing.player_id != player_id]
-        self.photos.append(photo)
+        self._replace_player_photo(Photo(player_id=player_id, data=data))
         if self._all_players_uploaded():
             self.open = False
+
+    def _replace_player_photo(self, photo: Photo) -> None:
+        self.photos = [
+            existing
+            for existing in self.photos
+            if existing.player_id != photo.player_id
+        ]
+        self.photos.append(photo)
 
     def _all_players_uploaded(self) -> bool:
         uploaded_player_ids = {photo.player_id for photo in self.photos}
         return set(self.player_ids).issubset(uploaded_player_ids)
 
     def close_if_expired(self, now: datetime, shuffle: Callable[[list[Photo]], list[Photo]]) -> None:
-        now = as_utc(now)
-        if self.open and as_utc(now) >= as_utc(self.deadline):
-            self.close(now, shuffle)
+        current_time = as_utc(now)
+        if self.open and current_time >= as_utc(self.deadline):
+            self.close(current_time, shuffle)
 
     def close(self, now: datetime, shuffle: Callable[[list[Photo]], list[Photo]]) -> CloseResult:
         now = as_utc(now)
         self.open = False
         if not self.photos:
             return CloseResult(phase="lobby", message="No photos this round")
-        if self._photos_are_unpositioned():
+        if self._photos_need_positions():
             self.photos = shuffle(self.photos)
             for position, photo in enumerate(self.photos, start=1):
                 photo.position = position
@@ -97,5 +103,5 @@ class Round:
             raise Conflict("No next photo")
         self.current_photo_position += 1
 
-    def _photos_are_unpositioned(self) -> bool:
+    def _photos_need_positions(self) -> bool:
         return all(photo.position is None for photo in self.photos)
