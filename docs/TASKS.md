@@ -27,7 +27,7 @@ Unit and integration tests pass (97 passed).
 
 OWNER: A
 PHASE: 3
-STATUS: ready
+STATUS: in-progress
 
 ## UC-004
 
