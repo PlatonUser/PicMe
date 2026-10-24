@@ -24,4 +24,25 @@ before code and open pull requests for review before merging.
 
 ## Status
 
+## Deployment
+
+- **Live:** https://picme-latest.onrender.com (API docs at `/docs`)
+- **Hosting:** Render free web service running the Docker image
+  `ghcr.io/platonuser/picme`; database on Neon (serverless PostgreSQL, Frankfurt).
+- **Pipeline:**
+  1. `ci.yml` runs on every pull request and on `main`: structure check, unit and
+     integration tests, Docker build plus E2E tests against the container.
+  2. `release.yml` runs on a tag `v*`: builds the image, runs the E2E tests against it,
+     pushes it to GHCR (`:<tag>` and `:latest`) and creates a GitHub Release.
+  3. `cd.yml` runs after a successful Release: triggers the Render deploy hook, waits
+     for `/health`, then runs the E2E tests against the live URL. It can also be started
+     by hand (Actions → CD → Run workflow).
+- **Release:** `git tag vX.Y.Z && git push origin vX.Y.Z`
+- **Configuration:** `DATABASE_URL` is set only in Render; the deploy hook is the GitHub
+  secret `RENDER_DEPLOY_HOOK_URL`, the URL the variable `RENDER_URL`. No credentials are
+  stored in the repository.
+- **Limits:** the free Render instance sleeps after 15 minutes without traffic (first
+  request then takes about a minute); Neon scales to zero when idle. The health check
+  after a deploy can briefly hit the previous version, so CD waits 90 seconds first.
+
 Sprint 2 (use cases with TDD) in progress.
