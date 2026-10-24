@@ -71,6 +71,32 @@ def test_round_uses_requested_duration_and_server_time(client):
     assert response.json()["upload_deadline"] == "2026-10-22T12:00:20+00:00"
 
 
+def test_round_deadlines_are_iso8601_utc_with_timezone(client):
+    game, _ = create_game(client)
+    clock = FakeClock(datetime(2026, 10, 22, 12, 0, tzinfo=timezone.utc))
+    override_clock(client, clock)
+
+    started = start_round(client, game, category="food", duration=20)
+    extended = client.post(
+        f"/games/{game['code']}/rounds/current/extend",
+        headers={"X-Host-Token": game["host_token"]},
+    )
+    state = client.get(f"/games/{game['code']}/state")
+
+    assert started.status_code == 201
+    assert extended.status_code == 200
+    assert state.status_code == 200
+    deadlines = [
+        started.json()["upload_deadline"],
+        extended.json()["upload_deadline"],
+        state.json()["round"]["upload_deadline"],
+    ]
+    for deadline in deadlines:
+        parsed = datetime.fromisoformat(deadline.replace("Z", "+00:00"))
+        assert parsed.utcoffset() == timezone.utc.utcoffset(parsed)
+        assert deadline.endswith(("Z", "+00:00"))
+
+
 def test_second_round_does_not_repeat_a_used_category_prompt(client):
     game, _ = create_game(client)
     first = start_round(client, game, category="food").json()["prompt"]
