@@ -33,6 +33,7 @@ class Round:
     deadline: datetime
     open: bool = True
     photos: list[Photo] = field(default_factory=list)
+    current_photo_position: int | None = None
 
     @classmethod
     def start(
@@ -88,7 +89,13 @@ class Round:
             self.photos = shuffle(self.photos)
             for position, photo in enumerate(self.photos, start=1):
                 photo.position = position
+        self.current_photo_position = 1
         return CloseResult(phase="voting")
+
+    def advance_photo(self) -> None:
+        if self.current_photo_position is None or self.current_photo_position >= len(self.photos):
+            raise Conflict("No next photo")
+        self.current_photo_position += 1
 
     def _photos_are_unpositioned(self) -> bool:
         return all(photo.position is None for photo in self.photos)
