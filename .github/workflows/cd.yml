@@ -1,49 +1,71 @@
 name: CD
 
 on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
   workflow_dispatch:
-    inputs:
-      environment:
-        description: Deployment environment
-        required: true
-        default: production
-  workflow_call:
 
 permissions:
   contents: read
 
-jobs:
-  preflight:
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || 'production' }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
 
-      - name: Check deployment configuration
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout released commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Trigger Render deploy
         env:
-          CD_ENABLED: ${{ vars.CD_ENABLED }}
-        shell: bash
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
           set -euo pipefail
-          if [ "$CD_ENABLED" != "true" ]; then
-            echo "CD template is present but inactive. Set CD_ENABLED=true after adding the project deployment and smoke-test commands."
-            exit 0
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "Secret RENDER_DEPLOY_HOOK_URL is missing"
+            exit 1
           fi
-          test -x scripts/deploy.sh
-          test -x scripts/smoke-test.sh
+          curl --fail --silent --show-error -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
+          echo "Deploy triggered"
 
-  deploy:
-    if: vars.CD_ENABLED == 'true'
-    needs: preflight
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || 'production' }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Wait for the new version to be healthy
+        env:
+          RENDER_URL: ${{ vars.RENDER_URL }}
+        run: |
+          set -euo pipefail
+          sleep 90
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent "$RENDER_URL/health"; then
+              echo
+              echo "Healthy after deploy"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Service did not become healthy"
+          exit 1
 
-      - name: Deploy validated artifact
-        run: ./scripts/deploy.sh
+      - name: Read Python version
+        id: pyver
+        run: echo "version=$(cat .python-version)" >> "$GITHUB_OUTPUT"
 
-      - name: Run post-deployment smoke test
-        run: ./scripts/smoke-test.sh
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ steps.pyver.outputs.version }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run E2E tests against production
+        env:
+          BASE_URL: ${{ vars.RENDER_URL }}
+        run: pytest -q tests/e2e
