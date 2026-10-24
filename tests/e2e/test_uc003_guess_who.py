@@ -41,7 +41,6 @@ def _current_photo_voter(game, players_by_photo):
     return voter, uploader
 
 
-@pytest.mark.xfail(reason="UC-003 not implemented yet", strict=False)
 def test_eligible_player_guess_is_recorded_and_can_be_changed(tiny_jpeg):
     game, anna, ben, cara, photos = _voting_game(tiny_jpeg)
     voter, uploader = _current_photo_voter(game, photos)
@@ -55,33 +54,34 @@ def test_eligible_player_guess_is_recorded_and_can_be_changed(tiny_jpeg):
     assert replacement.json()["accepted"] is True
 
 
-@pytest.mark.xfail(reason="UC-003 not implemented yet", strict=False)
 def test_vote_progress_exposes_counts_without_individual_guesses(tiny_jpeg):
     game, _, _, _, photos = _voting_game(tiny_jpeg)
     voter, uploader = _current_photo_voter(game, photos)
     assert vote(game["code"], voter["player_id"], uploader["player_id"]).status_code == 201
 
-    response = vote_progress(game["code"])
+    response = vote_progress(game)
     body = response.json()
 
     assert response.status_code == 200
-    assert body == {"voted": 1, "eligible": 1}
+    assert body == {"voted": 1, "eligible": 2}
     assert "guesses" not in body
 
 
-@pytest.mark.xfail(reason="UC-003 not implemented yet", strict=False)
 def test_last_eligible_vote_enters_reveal_and_shows_uploader(tiny_jpeg):
-    game, _, _, _, photos = _voting_game(tiny_jpeg)
-    voter, uploader = _current_photo_voter(game, photos)
+    game, anna, ben, cara, photos = _voting_game(tiny_jpeg)
+    _, uploader = _current_photo_voter(game, photos)
 
-    response = vote(game["code"], voter["player_id"], uploader["player_id"])
+    for player in (anna, ben, cara):
+        if player != uploader:
+            response = vote(
+                game["code"], player["player_id"], uploader["player_id"]
+            )
+            assert response.status_code == 201
 
-    assert response.status_code == 201
     assert state(game["code"]).json()["phase"] == "reveal"
     assert state(game["code"]).json()["photo"]["uploader_name"] == uploader["name"]
 
 
-@pytest.mark.xfail(reason="UC-003 not implemented yet", strict=False)
 def test_host_closes_voting_with_pending_votes_and_reveals_uploader(tiny_jpeg):
     game, _, _, _, photos = _voting_game(tiny_jpeg)
     _, uploader = _current_photo_voter(game, photos)
@@ -92,7 +92,6 @@ def test_host_closes_voting_with_pending_votes_and_reveals_uploader(tiny_jpeg):
     assert response.json() == {"phase": "reveal", "uploader_name": uploader["name"]}
 
 
-@pytest.mark.xfail(reason="UC-003 not implemented yet", strict=False)
 def test_host_advances_reveal_to_voting_for_next_photo(tiny_jpeg):
     game, _, _, _, photos = _voting_game(tiny_jpeg)
     assert close_voting(game).status_code == 200
@@ -104,7 +103,6 @@ def test_host_advances_reveal_to_voting_for_next_photo(tiny_jpeg):
     assert response.json()["position"] == 2
 
 
-@pytest.mark.xfail(reason="UC-003 not implemented yet", strict=False)
 def test_host_returns_to_lobby_after_last_photo(tiny_jpeg):
     game, _, _, _, _ = _voting_game(tiny_jpeg)
     assert close_voting(game).status_code == 200
@@ -120,7 +118,6 @@ def test_host_returns_to_lobby_after_last_photo(tiny_jpeg):
     assert response.json() == {"phase": "lobby"}
 
 
-@pytest.mark.xfail(reason="UC-003 not implemented yet", strict=False)
 def test_voting_errors_cover_uploader_invalid_guess_wrong_phase_and_unknown_game(tiny_jpeg):
     game, anna, _, _, photos = _voting_game(tiny_jpeg)
     voter, uploader = _current_photo_voter(game, photos)
@@ -138,7 +135,6 @@ def test_voting_errors_cover_uploader_invalid_guess_wrong_phase_and_unknown_game
     assert unknown.status_code == 404
 
 
-@pytest.mark.xfail(reason="UC-003 not implemented yet", strict=False)
 def test_voting_host_actions_require_the_host_token(tiny_jpeg):
     game, _, _, _, _ = _voting_game(tiny_jpeg)
     url = f"{os.environ['BASE_URL'].rstrip('/')}/games/{game['code']}/voting/close"
