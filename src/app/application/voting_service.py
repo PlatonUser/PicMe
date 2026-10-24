@@ -45,49 +45,41 @@ class VotingService:
         game = self._game(code)
         if game.phase != "voting":
             raise Conflict("Game is not in voting phase")
-        round_ = self._round(code)
-        photo = self._current_photo(round_)
-        photo_id = getattr(photo, "id", id(photo))
-        vote = self.votes.get(photo_id)
-        if vote is None:
-            vote = Vote.start(photo_id, photo.player_id, [player.id for player in game.players])
+        round_ = self._current_round(code)
+        photo = self._photo(round_)
+        vote = self._load_vote(photo, game)
         vote.cast(voter_id, guessed_player_id)
         self.votes.save(vote)
         if vote.is_complete():
-            game.phase = "reveal"
-            self.games.save(game)
+            self._save_phase(game, "reveal")
         return VoteResult(True)
 
     def progress(self, code: str, host_token: str) -> ProgressResult:
         game = self._game(code)
         self._host(game, host_token)
-        round_ = self._round(code)
-        vote = self._vote(round_, game)
+        round_ = self._current_round(code)
+        vote = self._load_vote(self._photo(round_), game)
         voted, eligible = vote.progress()
         return ProgressResult(voted, eligible)
 
     def close_voting(self, code: str, host_token: str) -> CloseVotingResult:
         game = self._game(code)
         self._host(game, host_token)
-        round_ = self._round(code)
+        round_ = self._current_round(code)
         if game.phase == "voting":
-            game.phase = "reveal"
-            self.games.save(game)
-        photo = self._current_photo(round_)
-        uploader = next(player.name for player in game.players if player.id == photo.player_id)
-        return CloseVotingResult(game.phase, uploader)
+            self._save_phase(game, "reveal")
+        uploader_name = self._uploader_name(game, self._photo(round_))
+        return CloseVotingResult(game.phase, uploader_name)
 
     def next_photo(self, code: str, host_token: str) -> NextPhotoResult:
         game = self._game(code)
         self._host(game, host_token)
-        round_ = self._round(code)
+        round_ = self._current_round(code)
         if game.phase != "reveal":
             raise Conflict("Game is not in reveal phase")
         round_.advance_photo()
-        round_.current_photo_position = round_.current_photo_position
         self.rounds.save(round_)
-        game.phase = "voting"
-        self.games.save(game)
+        self._save_phase(game, "voting")
         return NextPhotoResult("voting", round_.current_photo_position)
 
     def return_to_lobby(self, code: str, host_token: str) -> CloseVotingResult:
@@ -95,8 +87,7 @@ class VotingService:
         self._host(game, host_token)
         if game.phase != "reveal":
             raise Conflict("Game is not in reveal phase")
-        game.phase = "lobby"
-        self.games.save(game)
+        self._save_phase(game, "lobby")
         return CloseVotingResult("lobby")
 
     def state(self, code: str, state: dict) -> dict:
@@ -104,37 +95,44 @@ class VotingService:
             state["voting"] = None
             return state
         game = self._game(code)
-        round_ = self._round(code)
-        photo = self._current_photo(round_)
-        state["photo"].update({"id": photo.id, "position": photo.position,
-                                "total": len(round_.photos), "uploader_name": None})
+        round_ = self._current_round(code)
+        photo = self._photo(round_)
+        state["photo"].update(
+            {"id": photo.id, "position": photo.position,
+             "total": len(round_.photos), "uploader_name": None}
+        )
         if game.phase == "reveal":
-            state["photo"]["uploader_name"] = next(
-                player.name for player in game.players if player.id == photo.player_id
-            )
-        vote = self._vote(round_, game)
+            state["photo"]["uploader_name"] = self._uploader_name(game, photo)
+        vote = self._load_vote(photo, game)
         voted, eligible = vote.progress()
         state["voting"] = {"voted": voted, "eligible": eligible}
         return state
 
-    def _vote(self, round_, game):
-        photo = self._current_photo(round_)
+    def _load_vote(self, photo, game):
         photo_id = getattr(photo, "id", id(photo))
         vote = self.votes.get(photo_id)
         if vote is None:
             vote = Vote.start(photo_id, photo.player_id, [player.id for player in game.players])
         return vote
 
-    def _round(self, code):
-        round_ = self.rounds.current(code)
-        if round_ is None or not round_.photos:
+    def _current_round(self, code):
+        current_round = self.rounds.current(code)
+        if current_round is None or not current_round.photos:
             raise Conflict("No current photo")
-        return round_
+        return current_round
 
     @staticmethod
-    def _current_photo(round_):
-        position = round_.current_photo_position or 1
-        return next(photo for photo in round_.photos if photo.position == position)
+    def _photo(round_):
+        current_position = round_.current_photo_position or 1
+        return next(photo for photo in round_.photos if photo.position == current_position)
+
+    def _save_phase(self, game, phase: str) -> None:
+        game.phase = phase
+        self.games.save(game)
+
+    @staticmethod
+    def _uploader_name(game, photo) -> str:
+        return next(player.name for player in game.players if player.id == photo.player_id)
 
     def _game(self, code):
         game = self.games.get(code)

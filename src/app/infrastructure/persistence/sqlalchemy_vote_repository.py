@@ -14,8 +14,12 @@ class SQLAlchemyVoteRepository(VoteRepository):
         self.session = session
 
     def get(self, photo_id: int) -> Vote | None:
-        rows = list(self.session.scalars(select(VoteModel).where(VoteModel.photo_id == photo_id)))
-        if not rows:
+        vote_rows = list(
+            self.session.scalars(
+                select(VoteModel).where(VoteModel.photo_id == photo_id)
+            )
+        )
+        if not vote_rows:
             return None
         uploader_id, player_ids = self.session.execute(
             select(PhotoModel.player_id, RoundModel.player_ids)
@@ -23,15 +27,21 @@ class SQLAlchemyVoteRepository(VoteRepository):
             .where(PhotoModel.id == photo_id)
         ).one()
         vote = Vote.start(photo_id, uploader_id, player_ids)
-        vote.guesses = {row.voter_id: row.guessed_player_id for row in rows}
+        vote.guesses = {
+            row.voter_id: row.guessed_player_id for row in vote_rows
+        }
         return vote
 
     def save(self, vote: Vote) -> None:
         self.session.execute(delete(VoteModel).where(VoteModel.photo_id == vote.photo_id))
         now = datetime.now(timezone.utc)
         self.session.add_all(
-            VoteModel(photo_id=vote.photo_id, voter_id=voter_id,
-                      guessed_player_id=guessed_id, created_at=now)
-            for voter_id, guessed_id in vote.guesses.items()
+            VoteModel(
+                photo_id=vote.photo_id,
+                voter_id=voter_id,
+                guessed_player_id=guessed_player_id,
+                created_at=now,
+            )
+            for voter_id, guessed_player_id in vote.guesses.items()
         )
         self.session.commit()
