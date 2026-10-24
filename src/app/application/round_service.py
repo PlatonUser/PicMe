@@ -9,6 +9,7 @@ from app.application.ports.round_repository import RoundRepository
 from app.domain.errors import Conflict, Forbidden, NotFound
 from app.domain.prompt import SHUFFLE, choose_prompt, custom_prompt
 from app.domain.round import Round
+from app.domain.time import as_utc
 
 
 @dataclass
@@ -41,7 +42,6 @@ class RoundService:
         self.rounds = rounds
         self.storage = storage
         self.clock = clock
-        self._next_photo_id = 1
 
     def start_round(self, code: str, host_token: str, category: str | None = None,
                     prompt: str | None = None, duration: int = 40) -> RoundResult:
@@ -80,9 +80,7 @@ class RoundService:
         round_.upload(player_id, data, self._now(round_))
         self.rounds.save(round_)
         photo = next(photo for photo in round_.photos if photo.player_id == player_id and photo.data == data)
-        photo_id = self._next_photo_id
-        self._next_photo_id += 1
-        photo.id = photo_id
+        photo_id = getattr(photo, "id", id(photo))
         self.storage.store(photo_id, data)
         return PhotoResult(photo_id, player_id, data)
 
@@ -122,10 +120,7 @@ class RoundService:
         round_.extend()
         self.rounds.save(round_)
         deadline = round_.deadline
-        now = self.clock.now()
-        if deadline.tzinfo is None and now.tzinfo is not None:
-            deadline = deadline.replace(tzinfo=now.tzinfo)
-        return deadline
+        return as_utc(deadline)
 
     def state(self, code: str) -> dict:
         game = self._game(code)
@@ -140,9 +135,10 @@ class RoundService:
             photo = {"id": getattr(current, "id", None), "position": current.position,
                      "total": len(round_.photos), "uploader_name": None}
         return {"phase": result.phase, "round": {"round_number": round_.round_number, "prompt": round_.prompt,
-                           "category": round_.category, "hint": None,
-                           "upload_deadline": round_.deadline, "server_time": round_.started_at,
-                           "uploaded_count": len(round_.photos)}, "photo": photo,
+                            "category": round_.category, "hint": None,
+                             "upload_deadline": round_.deadline,
+                             "server_time": self.clock.now(),
+                            "uploaded_count": len(round_.photos)}, "photo": photo,
                 "message": result.message}
 
     def image(self, photo_id: int) -> bytes:
@@ -156,10 +152,7 @@ class RoundService:
                            round_.deadline, phase)
 
     def _now(self, round_: Round) -> datetime:
-        now = self.clock.now()
-        if round_.deadline.tzinfo is None and now.tzinfo is not None:
-            return now.replace(tzinfo=None)
-        return now
+        return as_utc(self.clock.now())
 
     @staticmethod
     def _shuffle(photos):

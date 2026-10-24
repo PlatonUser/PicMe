@@ -71,6 +71,32 @@ def test_round_uses_requested_duration_and_server_time(client):
     assert response.json()["upload_deadline"] == "2026-10-22T12:00:20+00:00"
 
 
+def test_round_deadlines_are_iso8601_utc_with_timezone(client):
+    game, _ = create_game(client)
+    clock = FakeClock(datetime(2026, 10, 22, 12, 0, tzinfo=timezone.utc))
+    override_clock(client, clock)
+
+    started = start_round(client, game, category="food", duration=20)
+    extended = client.post(
+        f"/games/{game['code']}/rounds/current/extend",
+        headers={"X-Host-Token": game["host_token"]},
+    )
+    state = client.get(f"/games/{game['code']}/state")
+
+    assert started.status_code == 201
+    assert extended.status_code == 200
+    assert state.status_code == 200
+    deadlines = [
+        started.json()["upload_deadline"],
+        extended.json()["upload_deadline"],
+        state.json()["round"]["upload_deadline"],
+    ]
+    for deadline in deadlines:
+        parsed = datetime.fromisoformat(deadline.replace("Z", "+00:00"))
+        assert parsed.utcoffset() == timezone.utc.utcoffset(parsed)
+        assert deadline.endswith(("Z", "+00:00"))
+
+
 def test_second_round_does_not_repeat_a_used_category_prompt(client):
     game, _ = create_game(client)
     first = start_round(client, game, category="food").json()["prompt"]
@@ -223,7 +249,9 @@ def test_missing_or_incorrect_host_token_returns_forbidden(client, token):
     assert response.status_code == 403
     after = client.get(f"/games/{game['code']}/state").json()
     assert after["phase"] == before["phase"]
-    assert after["round"] == before["round"]
+    assert {key: value for key, value in after["round"].items() if key != "server_time"} == {
+        key: value for key, value in before["round"].items() if key != "server_time"
+    }
     assert after["round"]["uploaded_count"] == before["round"]["uploaded_count"]
 
 
@@ -247,7 +275,9 @@ def test_unknown_player_returns_not_found(client, tiny_jpeg):
     assert response.status_code == 404
     after = client.get(f"/games/{game['code']}/state").json()
     assert after["phase"] == before["phase"]
-    assert after["round"] == before["round"]
+    assert {key: value for key, value in after["round"].items() if key != "server_time"} == {
+        key: value for key, value in before["round"].items() if key != "server_time"
+    }
     assert after["round"]["uploaded_count"] == before["round"]["uploaded_count"]
 
 
@@ -261,7 +291,9 @@ def test_non_jpeg_upload_returns_unprocessable_entity(client):
     assert response.status_code == 422
     after = client.get(f"/games/{game['code']}/state").json()
     assert after["phase"] == before["phase"]
-    assert after["round"] == before["round"]
+    assert {key: value for key, value in after["round"].items() if key != "server_time"} == {
+        key: value for key, value in before["round"].items() if key != "server_time"
+    }
     assert after["round"]["uploaded_count"] == before["round"]["uploaded_count"]
 
 
@@ -275,7 +307,9 @@ def test_upload_larger_than_two_megabytes_returns_payload_too_large(client):
     assert response.status_code == 413
     after = client.get(f"/games/{game['code']}/state").json()
     assert after["phase"] == before["phase"]
-    assert after["round"] == before["round"]
+    assert {key: value for key, value in after["round"].items() if key != "server_time"} == {
+        key: value for key, value in before["round"].items() if key != "server_time"
+    }
     assert after["round"]["uploaded_count"] == before["round"]["uploaded_count"]
 
 

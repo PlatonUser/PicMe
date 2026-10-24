@@ -11,6 +11,7 @@ from tests.e2e.helpers import (
     start_round,
     start_round_for_code,
     state,
+    state_without_server_time,
     upload_file,
     upload_photo,
 )
@@ -71,9 +72,9 @@ def test_upload_after_uploads_close_returns_time_up_conflict(tiny_jpeg):
     assert start_round(game, {"prompt": "A photo prompt"}).status_code == 201
     assert close_uploads(game).status_code == 200
 
-    before = state(game["code"]).json()
+    before = state_without_server_time(game["code"])
     response = upload_photo(game["code"], player["player_id"], tiny_jpeg)
-    after = state(game["code"]).json()
+    after = state_without_server_time(game["code"])
 
     assert response.status_code == 409
     assert response.json() == {"detail": "Time's up"}
@@ -145,9 +146,9 @@ def test_unknown_game_returns_404():
 def test_invalid_round_input_returns_422(body):
     game = create_game().json()
 
-    before = state(game["code"]).json()
+    before = state_without_server_time(game["code"])
     response = start_round(game, body)
-    after = state(game["code"]).json()
+    after = state_without_server_time(game["code"])
 
     assert response.status_code == 422
     assert after == before
@@ -156,9 +157,9 @@ def test_invalid_round_input_returns_422(body):
 def test_round_action_in_wrong_phase_returns_409():
     game = create_game().json()
 
-    before = state(game["code"]).json()
+    before = state_without_server_time(game["code"])
     response = close_uploads(game)
-    after = state(game["code"]).json()
+    after = state_without_server_time(game["code"])
 
     assert response.status_code == 409
     assert after == before
@@ -168,9 +169,9 @@ def test_upload_unknown_player_returns_404(tiny_jpeg):
     game = create_game().json()
     assert start_round(game, {"prompt": "A photo prompt"}).status_code == 201
 
-    before = state(game["code"]).json()
+    before = state_without_server_time(game["code"])
     response = upload_photo(game["code"], 999999, tiny_jpeg)
-    after = state(game["code"]).json()
+    after = state_without_server_time(game["code"])
 
     assert response.status_code == 404
     assert after == before
@@ -181,11 +182,11 @@ def test_upload_invalid_file_returns_422():
     player = join(game["code"], "Anna").json()
     assert start_round(game, {"prompt": "A photo prompt"}).status_code == 201
 
-    before = state(game["code"]).json()
+    before = state_without_server_time(game["code"])
     response = upload_file(
         game["code"], player["player_id"], b"not a jpeg", "photo.txt", "text/plain"
     )
-    after = state(game["code"]).json()
+    after = state_without_server_time(game["code"])
 
     assert response.status_code == 422
     assert after == before
@@ -197,9 +198,9 @@ def test_upload_photo_larger_than_2mb_returns_413(tiny_jpeg):
     assert start_round(game, {"prompt": "A photo prompt"}).status_code == 201
 
     oversized_jpeg = tiny_jpeg[:-2] + b"\x00" * (2 * 1024 * 1024) + b"\xff\xd9"
-    before = state(game["code"]).json()
+    before = state_without_server_time(game["code"])
     response = upload_photo(game["code"], player["player_id"], oversized_jpeg)
-    after = state(game["code"]).json()
+    after = state_without_server_time(game["code"])
 
     assert response.status_code == 413
     assert "detail" in response.json()
