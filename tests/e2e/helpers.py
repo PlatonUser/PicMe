@@ -79,8 +79,11 @@ def close_voting(game):
     )
 
 
-def vote_progress(code):
-    return httpx.get(_url(f"/games/{code}/votes/progress"))
+def vote_progress(game):
+    return httpx.get(
+        _url(f"/games/{game['code']}/votes/progress"),
+        headers={"X-Host-Token": game["host_token"]},
+    )
 
 
 def next_photo(game):

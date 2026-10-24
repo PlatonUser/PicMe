@@ -27,6 +27,9 @@ from app.application.round_service import RoundService
 from app.infrastructure.persistence.sqlalchemy_round_repository import SQLAlchemyRoundRepository
 from app.infrastructure.persistence.sqlalchemy_photo_storage import SQLAlchemyPhotoStorage
 from app.infrastructure.system_clock import SystemClock
+from app.application.voting_service import VotingService
+from app.infrastructure.persistence.sqlalchemy_vote_repository import SQLAlchemyVoteRepository
+from app.interfaces.api.votes import router as votes_router
 
 
 def create_app(init_db: bool = True) -> FastAPI:
@@ -60,6 +63,7 @@ def create_app(init_db: bool = True) -> FastAPI:
 
     app.include_router(games_router(get_game_service))
     app.include_router(rounds_router(get_round_service))
+    app.include_router(votes_router(get_voting_service))
 
     return app
 
@@ -81,11 +85,25 @@ def get_round_service(
     )
 
 
+def get_voting_service(
+    session=Depends(get_db),
+    clock=Depends(get_clock),
+) -> VotingService:
+    games = SQLAlchemyGameRepository(session)
+    rounds = SQLAlchemyRoundRepository(session)
+    return VotingService(games, rounds, SQLAlchemyVoteRepository(session),
+                         SQLAlchemyPhotoStorage(session), clock)
+
+
 def get_game_service(
     session=Depends(get_db),
     round_service: RoundService = Depends(get_round_service),
+    voting_service: VotingService = Depends(get_voting_service),
 ) -> GameService:
-    return GameService(SQLAlchemyGameRepository(session), round_service.state)
+    def state(code: str) -> dict:
+        return voting_service.state(code, round_service.state(code))
+
+    return GameService(SQLAlchemyGameRepository(session), state)
 
 
 class GameServiceController:

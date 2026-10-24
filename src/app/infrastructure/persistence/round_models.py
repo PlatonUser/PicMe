@@ -19,6 +19,7 @@ class RoundModel(Base):
     deadline: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     open: Mapped[bool] = mapped_column(nullable=False, default=True)
     player_ids: Mapped[list[int]] = mapped_column(JSON, nullable=False, default=list)
+    current_photo_position: Mapped[int | None] = mapped_column(Integer)
     photos: Mapped[list["PhotoModel"]] = relationship(
         cascade="all, delete-orphan", order_by="PhotoModel.position"
     )
