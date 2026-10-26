@@ -69,7 +69,6 @@ def _complete_game(tiny_jpeg):
     return game, anna, ben, cara
 
 
-@pytest.mark.xfail(reason="UC-004 not implemented yet", strict=False)
 def test_last_reveal_can_return_to_lobby_preserving_game_players(tiny_jpeg):
     game, anna, ben, cara = _complete_game(tiny_jpeg)
 
@@ -82,7 +81,6 @@ def test_last_reveal_can_return_to_lobby_preserving_game_players(tiny_jpeg):
     assert {player["name"] for player in body["players"]} == {"Anna", "Ben", "Cara"}
 
 
-@pytest.mark.xfail(reason="UC-004 not implemented yet", strict=False)
 def test_complete_game_ends_with_points_ranked_scoreboard_and_correct_me(tiny_jpeg):
     game, anna, ben, cara = _complete_game(tiny_jpeg)
 
@@ -111,7 +109,6 @@ def test_complete_game_ends_with_points_ranked_scoreboard_and_correct_me(tiny_jp
     assert cara_scoreboard.json()["me"] == expected[2]
 
 
-@pytest.mark.xfail(reason="UC-004 not implemented yet", strict=False)
 def test_state_hides_points_and_ranks_before_scoreboard(tiny_jpeg):
     game, _, _, _ = _complete_game(tiny_jpeg)
 
@@ -122,7 +119,6 @@ def test_state_hides_points_and_ranks_before_scoreboard(tiny_jpeg):
     assert "rank" not in body
 
 
-@pytest.mark.xfail(reason="UC-004 not implemented yet", strict=False)
 def test_play_again_preserves_players_resets_game_to_lobby_and_hides_old_scoreboard(tiny_jpeg):
     game, anna, ben, cara = _complete_game(tiny_jpeg)
     assert end_game(game).status_code == 200
@@ -134,7 +130,6 @@ def test_play_again_preserves_players_resets_game_to_lobby_and_hides_old_scorebo
     assert response.status_code == 200
     assert response.json() == {"phase": "lobby"}
     assert body["phase"] == "lobby"
-    assert {player["name"] for player in body["players"]} == {"Anna", "Ben"}
     assert body["round"] is None
     assert body["photo"] is None
     assert {player["name"] for player in body["players"]} == {"Anna", "Ben", "Cara"}
@@ -157,7 +152,6 @@ def test_play_again_preserves_players_resets_game_to_lobby_and_hides_old_scorebo
     ]
 
 
-@pytest.mark.xfail(reason="UC-004 not implemented yet", strict=False)
 def test_scoreboard_errors_cover_early_unknown_game_and_host_tokens(tiny_jpeg):
     game, anna, _, _ = _complete_game(tiny_jpeg)
     before = state_without_server_time(game["code"])
@@ -177,7 +171,6 @@ def test_scoreboard_errors_cover_early_unknown_game_and_host_tokens(tiny_jpeg):
     assert after_end_errors == before_end_errors
 
 
-@pytest.mark.xfail(reason="UC-004 not implemented yet", strict=False)
 def test_play_again_requires_a_valid_host_token(tiny_jpeg):
     game, _, _, _ = _complete_game(tiny_jpeg)
     assert end_game(game).status_code == 200
