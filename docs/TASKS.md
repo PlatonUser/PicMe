@@ -31,11 +31,15 @@ STATUS: done
 
 Votes table, VotingService and votes API (vote, progress, close voting, next photo,
 back to lobby); unit, integration and e2e tests pass.
+
 ## UC-004
 
 OWNER: A
 PHASE: 3
-STATUS: ready
+STATUS: done
+
+Scoring and competition ranking, ScoreService and scoreboard API (end, scoreboard,
+play again); unit, integration and e2e tests pass.
 
 ## Delivery (acceptance tests, deployment, UI)
 

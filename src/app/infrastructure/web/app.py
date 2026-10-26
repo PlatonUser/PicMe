@@ -30,6 +30,8 @@ from app.infrastructure.system_clock import SystemClock
 from app.application.voting_service import VotingService
 from app.infrastructure.persistence.sqlalchemy_vote_repository import SQLAlchemyVoteRepository
 from app.interfaces.api.votes import router as votes_router
+from app.application.score_service import ScoreService
+from app.interfaces.api.scoreboard import router as scoreboard_router
 
 
 def create_app(init_db: bool = True) -> FastAPI:
@@ -64,6 +66,7 @@ def create_app(init_db: bool = True) -> FastAPI:
     app.include_router(games_router(get_game_service))
     app.include_router(rounds_router(get_round_service))
     app.include_router(votes_router(get_voting_service))
+    app.include_router(scoreboard_router(get_score_service))
 
     return app
 
@@ -104,6 +107,14 @@ def get_game_service(
         return voting_service.state(code, round_service.state(code))
 
     return GameService(SQLAlchemyGameRepository(session), state)
+
+
+def get_score_service(session=Depends(get_db)) -> ScoreService:
+    return ScoreService(
+        SQLAlchemyGameRepository(session),
+        SQLAlchemyRoundRepository(session),
+        SQLAlchemyVoteRepository(session),
+    )
 
 
 class GameServiceController:

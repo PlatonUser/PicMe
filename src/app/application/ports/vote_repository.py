@@ -11,3 +11,7 @@ class VoteRepository(ABC):
     @abstractmethod
     def save(self, vote: Vote) -> None:
         raise NotImplementedError
+
+    def delete_for_game(self, game_code: str) -> None:
+        if hasattr(self, "votes"):
+            self.votes.clear()

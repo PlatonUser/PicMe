@@ -45,3 +45,11 @@ class SQLAlchemyVoteRepository(VoteRepository):
             for voter_id, guessed_player_id in vote.guesses.items()
         )
         self.session.commit()
+
+    def delete_for_game(self, game_code: str) -> None:
+        self.session.execute(
+            delete(VoteModel).where(VoteModel.photo_id.in_(
+                select(PhotoModel.id).join(RoundModel).where(RoundModel.game_code == game_code)
+            ))
+        )
+        self.session.commit()

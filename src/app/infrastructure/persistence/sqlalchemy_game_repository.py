@@ -20,7 +20,7 @@ class SQLAlchemyGameRepository(GameRepository):
             return None
         game = Game(model.code, model.host_token, model.phase)
         for player in model.players:
-            game.add_player_from_persistence(player.id, player.name)
+            game.add_player_from_persistence(player.id, player.name, player.score)
         return game
 
     def save(self, game: Game) -> None:
@@ -28,7 +28,7 @@ class SQLAlchemyGameRepository(GameRepository):
         model.phase = game.phase
         model.players.clear()
         model.players.extend(
-            PlayerModel(id=player.id, name=player.name, game_code=game.code)
+            PlayerModel(id=player.id, name=player.name, score=player.score, game_code=game.code)
             for player in game.players
         )
         self.session.commit()
