@@ -134,11 +134,12 @@ class RoundService:
         result = self.check_deadline(code)
         round_ = self.rounds.current(code)
         photo = None
-        if round_.photos:
+        if result.phase in {"voting", "reveal"} and round_.photos:
             position = round_.current_photo_position or 1
-            current = next(item for item in round_.photos if item.position == position)
-            photo = {"id": getattr(current, "id", None), "position": current.position,
-                     "total": len(round_.photos), "uploader_name": None}
+            current = next((item for item in round_.photos if item.position == position), None)
+            if current is not None:
+                photo = {"id": getattr(current, "id", None), "position": current.position,
+                         "total": len(round_.photos), "uploader_name": None}
         return {"phase": result.phase, "round": {"round_number": round_.round_number, "prompt": round_.prompt,
                             "category": round_.category, "hint": None,
                              "upload_deadline": round_.deadline,
