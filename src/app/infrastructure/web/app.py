@@ -46,7 +46,7 @@ def create_app(init_db: bool = True) -> FastAPI:
 
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:
-        return RedirectResponse(url="/ui")
+        return RedirectResponse(url="/ui/")
 
     @app.get("/health")
     def health_check() -> dict[str, str]:
