@@ -51,7 +51,8 @@ def test_end_game_sets_scoreboard_and_scores_correct_eligible_guesses():
 
     assert result.phase == "scoreboard"
     assert game.phase == "scoreboard"
-    assert service.scoreboard(game.code, 1)["me"]["points"] == 2
+    # Anna (1) guessed Ben's photo correctly: 1 point
+    assert service.scoreboard(game.code, 1)["me"]["points"] == 1
 
 
 def test_end_game_with_wrong_token_raises_forbidden():
@@ -80,15 +81,16 @@ def test_scoreboard_returns_full_ranked_list_and_me_with_competition_ranks():
 
     result = service.scoreboard(game.code, 3)
 
-    assert result == {
-        "players": [
-            {"player_id": 1, "name": "Anna", "points": 2, "rank": 1},
-            {"player_id": 2, "name": "Ben", "points": 1, "rank": 2},
-            {"player_id": 3, "name": "Cara", "points": 1, "rank": 2},
-            {"player_id": 4, "name": "Drew", "points": 0, "rank": 4},
-        ],
-        "me": {"player_id": 3, "name": "Cara", "points": 1, "rank": 2},
-    }
+    # Cara: Anna's + Ben's photo = 2; Anna: Ben's = 1; Ben: Anna's = 1; Drew: 0
+    players = result["players"]
+    assert players[0] == {"player_id": 3, "name": "Cara", "points": 2, "rank": 1}
+    assert sorted(players, key=lambda player: player["player_id"]) == [
+        {"player_id": 1, "name": "Anna", "points": 1, "rank": 2},
+        {"player_id": 2, "name": "Ben", "points": 1, "rank": 2},
+        {"player_id": 3, "name": "Cara", "points": 2, "rank": 1},
+        {"player_id": 4, "name": "Drew", "points": 0, "rank": 4},
+    ]
+    assert result["me"] == {"player_id": 3, "name": "Cara", "points": 2, "rank": 1}
 
 
 def test_play_again_preserves_players_deletes_game_data_and_resets_scores():
@@ -131,4 +133,5 @@ def test_returning_to_lobby_between_rounds_keeps_points():
 
     service.end_game(game.code, "host")
 
-    assert service.scoreboard(game.code, 1)["me"]["points"] == 2
+    # Ben (2): 1 point in round 1 + 1 point in round 2 (guessed Anna's photo 3) = 2
+    assert service.scoreboard(game.code, 2)["me"]["points"] == 2
