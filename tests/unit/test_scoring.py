@@ -18,7 +18,8 @@ def test_points_accumulate_over_several_photos_and_rounds():
         {"uploader_id": 3, "guesses": {1: 3, 2: 3}},
     ]
 
-    assert calculate_scores(players, photos) == {1: 2, 2: 1, 3: 2}
+    # Anna: Ben's + Cara's photo; Ben: Anna's + Cara's; Cara: only Anna's (guessed herself on Ben's)
+    assert calculate_scores(players, photos) == {1: 2, 2: 2, 3: 1}
 
 
 def test_players_without_correct_guesses_keep_zero_points_in_scoreboard():
