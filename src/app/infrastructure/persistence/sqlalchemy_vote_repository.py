@@ -52,4 +52,3 @@ class SQLAlchemyVoteRepository(VoteRepository):
                 select(PhotoModel.id).join(RoundModel).where(RoundModel.game_code == game_code)
             ))
         )
-        self.session.commit()

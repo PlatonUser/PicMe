@@ -62,8 +62,9 @@ class SQLAlchemyRoundRepository(RoundRepository):
         return self._to_domain(model) if model else None
 
     def delete_for_game(self, game_code: str) -> None:
+        round_ids = select(RoundModel.id).where(RoundModel.game_code == game_code)
+        self.session.execute(delete(PhotoModel).where(PhotoModel.round_id.in_(round_ids)))
         self.session.execute(delete(RoundModel).where(RoundModel.game_code == game_code))
-        self.session.commit()
 
     def _sync_photos(self, model: RoundModel, round_: Round) -> None:
         photos_by_id = {
