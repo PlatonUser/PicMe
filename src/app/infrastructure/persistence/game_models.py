@@ -21,4 +21,5 @@ class PlayerModel(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     game_code: Mapped[str] = mapped_column(ForeignKey("games.code"), nullable=False)
     name: Mapped[str] = mapped_column(String(20), nullable=False)
+    score: Mapped[int] = mapped_column(default=0, nullable=False)
     game: Mapped[GameModel] = relationship(back_populates="players")

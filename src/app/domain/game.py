@@ -8,6 +8,7 @@ from app.domain.errors import Conflict, InvalidInput
 class Player:
     id: int | None
     name: str
+    score: int = 0
 
 
 @dataclass
@@ -35,7 +36,7 @@ class Game:
         self.players.append(player)
         return player
 
-    def add_player_from_persistence(self, player_id: int, name: str) -> Player:
-        player = Player(player_id, name)
+    def add_player_from_persistence(self, player_id: int, name: str, score: int = 0) -> Player:
+        player = Player(player_id, name, score)
         self.players.append(player)
         return player

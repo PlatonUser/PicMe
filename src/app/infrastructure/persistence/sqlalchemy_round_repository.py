@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.application.ports.round_repository import RoundRepository
@@ -60,6 +60,10 @@ class SQLAlchemyRoundRepository(RoundRepository):
             .order_by(RoundModel.number.desc())
         )
         return self._to_domain(model) if model else None
+
+    def delete_for_game(self, game_code: str) -> None:
+        self.session.execute(delete(RoundModel).where(RoundModel.game_code == game_code))
+        self.session.commit()
 
     def _sync_photos(self, model: RoundModel, round_: Round) -> None:
         photos_by_id = {
