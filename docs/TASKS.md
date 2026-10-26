@@ -35,7 +35,7 @@ back to lobby); unit, integration and e2e tests pass.
 
 OWNER: A
 PHASE: 3
-STATUS: ready
+STATUS: in-progress
 
 ## Delivery (acceptance tests, deployment, UI)
 
