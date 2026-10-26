@@ -47,20 +47,23 @@
       let categories = [];
       let pollTimer;
       let countdownTimer;
+      let messageTimer;
       let busy = false;
       let renderedKey = '';
       let selectedCategory = 'Shuffle';
       let customPrompt = '';
       let selectedDuration = 40;
       let lobbyElements = {};
+      let renderedPhase = '';
+      let lastStateMessage = '';
 
       function readCredentials() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (_) { return null; } }
       function saveCredentials(value) { credentials = value; localStorage.setItem(KEY, JSON.stringify(value)); }
       function clearCredentials() { credentials = null; localStorage.removeItem(KEY); state = null; stopTimers(); showStart(); }
       function stopTimers() { clearTimeout(pollTimer); clearInterval(countdownTimer); }
       function showStart() { stopTimers(); renderedKey = ''; lobbyElements = {}; start.classList.remove('hidden'); screen.classList.add('hidden'); screen.innerHTML = ''; }
-      function showError(message) { error.textContent = message; error.classList.remove('hidden'); }
-      function clearError() { error.textContent = ''; error.classList.add('hidden'); }
+      function showError(message) { clearTimeout(messageTimer); error.textContent = message; error.classList.remove('hidden'); messageTimer = setTimeout(clearError, 4000); }
+      function clearError() { clearTimeout(messageTimer); error.textContent = ''; error.classList.add('hidden'); }
       function escape(value) { return String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
       async function api(path, options = {}) {
         const headers = new Headers(options.headers || {});
@@ -91,6 +94,8 @@
       }
       function render() {
         start.classList.add('hidden'); screen.classList.remove('hidden');
+        const phaseChanged = state.phase !== renderedPhase;
+        if (phaseChanged) { renderedPhase = state.phase; clearError(); lastStateMessage = state.message || ''; }
         const round = state.round || {}, photo = state.photo || {};
         const key = `${state.phase}:${round.round_number || ''}:${photo.id || ''}`;
         if (key !== renderedKey) {
@@ -105,7 +110,8 @@
         } else if (state.phase === 'voting') {
           updateVoting();
         }
-        if (state.message) showError(state.message); else clearError();
+        if (!phaseChanged && state.message && state.message !== lastStateMessage) { lastStateMessage = state.message; showError(state.message); }
+        if (!state.message) lastStateMessage = '';
       }
       function panel(content) { screen.innerHTML = `<section class="panel">${content}</section>`; }
       function renderLobby() {

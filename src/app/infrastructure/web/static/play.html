@@ -44,14 +44,15 @@
       const join = document.getElementById('join'), screen = document.getElementById('screen');
       const message = document.getElementById('message'), leave = document.getElementById('leave');
       const codeInput = document.getElementById('code'), nameInput = document.getElementById('name');
-      let player = readPlayer(), state = null, pollTimer = null, countdownTimer = null, busy = false, ownPhoto = {}, renderedKey = '';
+      let player = readPlayer(), state = null, pollTimer = null, countdownTimer = null, messageTimer = null, busy = false, ownPhoto = {}, renderedKey = '', renderedPhase = '', lastStateMessage = '';
       const guesses = {};
       codeInput.value = (new URLSearchParams(location.search).get('code') || '').toUpperCase();
 
       function readPlayer() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (_) { return null; } }
-      function showError(text) { message.textContent = text; message.className = 'message'; }
-      function showSuccess(text) { message.textContent = text; message.className = 'message success'; }
-      function clearMessage() { message.textContent = ''; message.className = 'message hidden'; }
+      function showMessage(text, className) { clearTimeout(messageTimer); message.textContent = text; message.className = `message ${className}`; messageTimer = setTimeout(clearMessage, 4000); }
+      function showError(text) { showMessage(text, ''); }
+      function showSuccess(text) { showMessage(text, 'success'); }
+      function clearMessage() { clearTimeout(messageTimer); message.textContent = ''; message.className = 'message hidden'; }
       function escape(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
       function stopTimers() { clearTimeout(pollTimer); clearInterval(countdownTimer); }
       function savePlayer(value) { player = value; localStorage.setItem(KEY, JSON.stringify(value)); }
@@ -80,6 +81,8 @@
       function panel(html) { screen.innerHTML = `<section class="panel">${html}</section>`; }
       function render() {
         join.classList.add('hidden'); screen.classList.remove('hidden'); leave.classList.remove('hidden');
+        const phaseChanged = state.phase !== renderedPhase;
+        if (phaseChanged) { renderedPhase = state.phase; clearMessage(); lastStateMessage = state.message || ''; }
         const round = state.round || {}, photo = state.photo || {}, key = `${state.phase}:${round.round_number || ''}:${photo.id || ''}`;
         if (key !== renderedKey) {
           renderedKey = key; clearInterval(countdownTimer);
@@ -89,7 +92,8 @@
         } else if (state.phase === 'voting') {
           updateVoting();
         }
-        if (state.message) showError(state.message);
+        if (!phaseChanged && state.message && state.message !== lastStateMessage) { lastStateMessage = state.message; showError(state.message); }
+        if (!state.message) lastStateMessage = '';
       }
       function renderLobby() { const players = (state.players || []).map(p => `<li>${escape(p.name)}</li>`).join('') || '<li class="muted">Waiting for players...</li>'; panel(`<div class="center"><p class="muted">You're in,</p><h2>${escape(player.name)}!</h2><p>Waiting for the host…</p></div><h3>Players</h3><ul class="players">${players}</ul>`); }
       function renderWaiting() { panel('<div class="center"><h2>Waiting...</h2><p class="muted">The game will continue shortly.</p></div>'); }
