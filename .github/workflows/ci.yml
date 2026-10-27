@@ -28,6 +28,12 @@ jobs:
           test -d skills
           test -d .devcontainer
 
+      - name: Architecture check
+        run: |
+          if grep -rnE "fastapi|sqlalchemy" src/app/domain src/app/application; then
+            exit 1
+          fi
+
       - name: Check whitespace errors
         run: git diff --check
 

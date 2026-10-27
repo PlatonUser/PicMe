@@ -53,9 +53,9 @@ The `Game` is the aggregate root. Its phases are `lobby`, `uploading`,
   host action, and enters voting when photos exist or returns to lobby when none
   exist.
 - **Photo:** `id`, `round_id`, `player_id`, compressed JPEG bytes, byte size, and
-  fixed display order. Each player has at most one current photo per round and
-  may replace it only during uploading. JPEGs are limited to 2 MB, remain
-  anonymous while voting, and reveal their uploader afterward.
+  fixed display order. Each player can send one photo per round; once sent, that
+  photo is final. JPEGs are limited to 2 MB, remain anonymous while voting, and
+  reveal their uploader afterward.
 - **Vote:** `id`, `photo_id`, voter `player_id`, guessed `player_id`, and
   timestamp. A voter can keep only their latest guess for a photo, cannot vote
   on their own photo, and may guess only a player in the same game. Voting ends
@@ -92,6 +92,8 @@ the endpoint is explicitly multipart.
 | Method and path | Purpose | UC | Request fields | Success |
 |---|---|---|---|---|
 | `POST /games` | Create a game in lobby | UC-001 | none | `201` with `code`, `host_token`, and phase |
+| `GET /host` | Serve the host interface | - | none | `200` with the host HTML page |
+| `GET /play` | Serve the player interface | - | none | `200` with the player HTML page |
 | `POST /games/{code}/players` | Join a game | UC-001 | `name` | `201` with `player_id` and player name |
 | `GET /games/{code}/state` | Read public state and apply deadline transitions | UC-001/002/003/004 | none | `200` with phase and permitted current state |
 | `GET /prompts/categories` | List selectable prompt categories | UC-002 | none | `200` with categories |
@@ -161,40 +163,59 @@ status from the error table. Host actions send `X-Host-Token: <host_token>`.
 ```text
 src/app/
   domain/
+    __init__.py
     errors.py
     game.py
     prompt.py
     round.py
-    vote.py
     scoring.py
+    time.py
+    vote.py
   application/
+    __init__.py
+    game_service.py
+    round_service.py
+    score_service.py
+    voting_service.py
     ports/
+      __init__.py
       game_repository.py
       round_repository.py
       vote_repository.py
       photo_storage.py
       clock.py
-    game_service.py
-    round_service.py
-    voting_service.py
-    score_service.py
   interfaces/
+    __init__.py
     api/
+      __init__.py
       games.py
       rounds.py
       votes.py
       scoreboard.py
   infrastructure/
+    __init__.py
+    config.py
+    database.py
     persistence/
+      __init__.py
       game_models.py
       round_models.py
       vote_models.py
       sqlalchemy_game_repository.py
       sqlalchemy_round_repository.py
       sqlalchemy_vote_repository.py
-    web/
-      errors.py
+      sqlalchemy_photo_storage.py
     system_clock.py
+    web/
+      __init__.py
+      app.py
+      errors.py
+      static/
+        host.html
+        index.html
+        play.html
+  __init__.py
+  main.py
 ```
 
 ## Errors
