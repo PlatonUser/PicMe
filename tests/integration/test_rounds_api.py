@@ -159,6 +159,20 @@ def test_state_read_after_deadline_moves_round_to_voting(client, tiny_jpeg):
     assert response.json()["message"] is None
 
 
+def test_state_during_uploading_hides_uploaded_photo(client, tiny_jpeg):
+    game, players = create_game(client)
+    start_round(client, game, category="food")
+    upload(client, game, players[0]["player_id"], tiny_jpeg)
+
+    response = client.get(f"/games/{game['code']}/state")
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["phase"] == "uploading"
+    assert result["round"]["uploaded_count"] == 1
+    assert result["photo"] is None
+
+
 def test_host_extends_deadline_by_ten_seconds(client):
     game, _ = create_game(client)
     clock = FakeClock(datetime(2026, 10, 22, 12, 0, tzinfo=timezone.utc))

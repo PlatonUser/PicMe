@@ -1,5 +1,5 @@
 from fastapi import Depends, FastAPI
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.infrastructure.database import SessionLocal, get_db, init_db
@@ -46,11 +46,19 @@ def create_app(init_db: bool = True) -> FastAPI:
 
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:
-        return RedirectResponse(url="/ui")
+        return RedirectResponse(url="/ui/")
 
     @app.get("/health")
     def health_check() -> dict[str, str]:
         return {"status": "healthy"}
+
+    @app.get("/host", include_in_schema=False)
+    def host_page() -> FileResponse:
+        return FileResponse("src/app/infrastructure/web/static/host.html")
+
+    @app.get("/play", include_in_schema=False)
+    def play_page() -> FileResponse:
+        return FileResponse("src/app/infrastructure/web/static/play.html")
 
     app.mount(
         "/ui",

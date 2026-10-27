@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PicMe Play</title>
+  <style>
+    :root { color-scheme: dark; --bg: #10131a; --panel: #1b2130; --text: #f7f8fb; --muted: #b9c1d1; --accent: #ffd447; --line: #46516a; --error: #632d37; --success: #244d45; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font: 20px/1.4 system-ui, sans-serif; }
+    main { width: min(720px, 92vw); margin: 0 auto; padding: 18px 0 48px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 2px solid var(--line); }
+    h1, h2, h3, p { margin: 0 0 18px; } h1 { font-size: 2rem; letter-spacing: .04em; } h2 { font-size: clamp(2rem, 9vw, 4rem); line-height: 1.08; } h3 { font-size: 1.4rem; }
+    .panel { margin-top: 24px; padding: clamp(20px, 5vw, 40px); background: var(--panel); border: 2px solid var(--line); border-radius: 18px; }
+    .center { text-align: center; } .stack > * { margin-bottom: 18px; } .stack > :last-child { margin-bottom: 0; } .muted { color: var(--muted); }
+    label { display: block; margin-bottom: 7px; font-weight: 750; } input, button { width: 100%; min-height: 60px; padding: 12px 16px; border: 2px solid var(--line); border-radius: 12px; font: inherit; }
+    input { background: #10131a; color: var(--text); } button { cursor: pointer; background: var(--accent); border-color: var(--accent); color: #17130a; font-weight: 800; } button:disabled { cursor: wait; opacity: .55; }
+    button.secondary { background: transparent; color: var(--text); } button.chosen { background: var(--accent); color: #17130a; outline: 4px solid #fff1a4; }
+    .message { margin-top: 18px; padding: 14px 16px; border: 2px solid #ff8996; border-radius: 12px; background: var(--error); } .message.success { border-color: #79d5bd; background: var(--success); }
+    .hidden { display: none !important; } .players, .choices { display: grid; gap: 10px; padding: 0; list-style: none; } .players li { padding: 13px 16px; border-radius: 10px; background: #283148; }
+    .code { color: var(--accent); font-size: 3rem; font-weight: 900; letter-spacing: .14em; } .countdown { color: var(--accent); font-size: clamp(4rem, 20vw, 8rem); font-weight: 900; line-height: 1; }
+    .photo { display: block; width: 100%; max-height: 55vh; margin: 0 auto 22px; border-radius: 12px; object-fit: contain; background: #0b0d12; } .preview { max-height: 38vh; }
+    .score { color: var(--accent); font-size: clamp(4rem, 20vw, 8rem); font-weight: 900; line-height: 1; } table { width: 100%; border-collapse: collapse; font-size: 1.15rem; } th, td { padding: 12px 7px; text-align: left; border-bottom: 2px solid var(--line); } th { color: var(--accent); }
+    .small { width: auto; min-height: 44px; padding: 7px 12px; font-size: .9rem; } .upload-label { display: block; min-height: 60px; padding: 12px 16px; border: 2px solid var(--accent); border-radius: 12px; background: var(--accent); color: #17130a; font-weight: 800; cursor: pointer; } .upload-label input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    @media (max-width: 420px) { body { font-size: 18px; } main { width: 94vw; } header { align-items: flex-start; } h1 { font-size: 1.7rem; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header><h1>PicMe</h1><button id="leave" class="secondary small hidden">Leave game</button></header>
+    <div id="message" class="message hidden" role="alert"></div>
+    <section id="join" class="panel stack">
+      <h2>Join the game</h2>
+      <label for="code">Game code</label><input id="code" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="ABC123">
+      <label for="name">Your name</label><input id="name" maxlength="20" autocomplete="name" placeholder="e.g. Sam">
+      <button id="join-button">Join</button>
+    </section>
+    <section id="screen" class="hidden"></section>
+  </main>
+  <script>
+    (() => {
+      'use strict';
+      const KEY = 'picme-player', SENT_PHOTOS_KEY = 'picme-sent-photos';
+      const join = document.getElementById('join'), screen = document.getElementById('screen');
+      const message = document.getElementById('message'), leave = document.getElementById('leave');
+      const codeInput = document.getElementById('code'), nameInput = document.getElementById('name');
+      let player = readPlayer(), state = null, pollTimer = null, countdownTimer = null, messageTimer = null, countdownOffset = 0, busy = false, ownPhoto = {}, renderedKey = '', renderedPhase = '', lastStateMessage = '';
+      const guesses = {};
+      codeInput.value = (new URLSearchParams(location.search).get('code') || '').toUpperCase();
+
+      function readPlayer() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (_) { return null; } }
+      function showMessage(text, className) { clearTimeout(messageTimer); message.textContent = text; message.className = `message ${className}`; messageTimer = setTimeout(clearMessage, 4000); }
+      function showError(text) { showMessage(text, ''); }
+      function showSuccess(text) { showMessage(text, 'success'); }
+      function clearMessage() { clearTimeout(messageTimer); message.textContent = ''; message.className = 'message hidden'; }
+      function escape(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
+      function stopTimers() { clearTimeout(pollTimer); clearInterval(countdownTimer); }
+      function savePlayer(value) { player = value; localStorage.setItem(KEY, JSON.stringify(value)); }
+      function sentPhotoRounds() { try { return JSON.parse(localStorage.getItem(SENT_PHOTOS_KEY)) || {}; } catch (_) { return {}; } }
+      function hasSentPhoto(roundNumber) { return sentPhotoRounds()[`${player.code}:${player.player_id}`] === roundNumber; }
+      function rememberSentPhoto(roundNumber) { const sent = sentPhotoRounds(); sent[`${player.code}:${player.player_id}`] = roundNumber; localStorage.setItem(SENT_PHOTOS_KEY, JSON.stringify(sent)); }
+      function leaveGame() { stopTimers(); player = null; state = null; renderedKey = ''; localStorage.removeItem(KEY); join.classList.remove('hidden'); screen.classList.add('hidden'); leave.classList.add('hidden'); clearMessage(); }
+      async function api(path, options = {}) {
+        const headers = new Headers(options.headers || {});
+        if (options.body && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
+        const response = await fetch(path, { ...options, headers });
+        let data = null; try { data = await response.json(); } catch (_) {}
+        if (!response.ok) { const error = new Error(data && data.detail ? data.detail : `Request failed (${response.status})`); error.status = response.status; throw error; }
+        return data;
+      }
+      async function joinGame() {
+        if (busy) return; const code = codeInput.value.trim().toUpperCase(), name = nameInput.value.trim();
+        if (!code || !name) return showError('Enter a game code and your name.');
+        busy = true; clearMessage(); document.getElementById('join-button').disabled = true;
+        try { const result = await api(`/games/${encodeURIComponent(code)}/players`, { method: 'POST', body: JSON.stringify({ name }) }); savePlayer({ code, player_id: result.player_id, name: result.name }); await poll(); }
+        catch (error) { showError(error.message); } finally { busy = false; document.getElementById('join-button').disabled = false; }
+      }
+      async function poll() {
+        if (!player) return; clearTimeout(pollTimer);
+        try { state = await api(`/games/${encodeURIComponent(player.code)}/state`); render(); }
+        catch (error) { showError(error.message); }
+        pollTimer = setTimeout(poll, 1500);
+      }
+      function panel(html) { screen.innerHTML = `<section class="panel">${html}</section>`; }
+      function render() {
+        join.classList.add('hidden'); screen.classList.remove('hidden'); leave.classList.remove('hidden');
+        const phaseChanged = state.phase !== renderedPhase;
+        if (phaseChanged) { renderedPhase = state.phase; clearMessage(); lastStateMessage = state.message || ''; }
+        const round = state.round || {}, photo = state.photo || {}, key = `${state.phase}:${round.round_number || ''}:${photo.id || ''}`;
+        if (key !== renderedKey) {
+          renderedKey = key; clearInterval(countdownTimer);
+          ({ lobby: renderLobby, uploading: renderUploading, voting: renderVoting, reveal: renderReveal, scoreboard: renderScoreboard }[state.phase] || renderWaiting)();
+        } else if (state.phase === 'uploading') {
+          updateUploading();
+        } else if (state.phase === 'voting') {
+          updateVoting();
+        }
+        if (!phaseChanged && state.message && state.message !== lastStateMessage) { lastStateMessage = state.message; showError(state.message); }
+        if (!state.message) lastStateMessage = '';
+      }
+      function renderLobby() { const players = (state.players || []).map(p => `<li>${escape(p.name)}</li>`).join('') || '<li class="muted">Waiting for players...</li>'; panel(`<div class="center"><p class="muted">You're in,</p><h2>${escape(player.name)}!</h2><p>Waiting for the host…</p></div><h3>Players</h3><ul class="players">${players}</ul>`); }
+      function renderWaiting() { panel('<div class="center"><h2>Waiting...</h2><p class="muted">The game will continue shortly.</p></div>'); }
+      function renderUploading() { const round = state.round || {}; if (hasSentPhoto(round.round_number)) return renderUploadWaiting(); panel(`<div class="center"><p class="muted">Prompt</p><h2>${escape(round.prompt)}</h2><div id="countdown" class="countdown">--</div><p>Take a photo inspired by the prompt.</p><label for="photo-file" class="upload-label">Take or choose photo<input id="photo-file" type="file" accept="image/*"></label><div id="preview-wrap" class="hidden"><img id="preview" class="photo preview" alt="Photo preview"><button id="send-photo">Send photo</button></div></div>`); document.getElementById('photo-file').onchange = choosePhoto; startCountdown(); }
+      function renderUploadWaiting() { panel('<div class="center"><div id="countdown" class="countdown">--</div><p>Photo sent ✓ Waiting for the others…</p></div>'); startCountdown(); }
+      function updateUploading() { syncCountdown(state.round || {}); }
+      function startCountdown() { syncCountdown(state.round || {}); countdownTimer = setInterval(() => updateCountdown(state.round || {}), 250); }
+      function syncCountdown(round) { countdownOffset = Date.now() - Date.parse(round.server_time || new Date().toISOString()); updateCountdown(round); }
+      function updateCountdown(round) { const deadline = Date.parse(round.upload_deadline), target = document.getElementById('countdown'); if (target) target.textContent = `${Math.max(0, Math.ceil((deadline - (Date.now() - countdownOffset)) / 1000))}s`; }
+      async function choosePhoto(event) { const file = event.target.files[0]; if (!file) return; clearMessage(); try { const blob = await compressImage(file); const preview = document.getElementById('preview'), wrap = document.getElementById('preview-wrap'); preview.src = URL.createObjectURL(blob); wrap.classList.remove('hidden'); document.getElementById('send-photo').onclick = () => uploadPhoto(blob); } catch (error) { showError(error.message); } }
+      function compressImage(file) { return new Promise((resolve, reject) => { const image = new Image(); image.onload = () => { let width = image.naturalWidth, height = image.naturalHeight, scale = Math.min(1, 1280 / Math.max(width, height)); width = Math.max(1, Math.round(width * scale)); height = Math.max(1, Math.round(height * scale)); const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height; canvas.getContext('2d').drawImage(image, 0, 0, width, height); let quality = .8; const encode = () => canvas.toBlob(blob => { if (!blob) return reject(new Error('That photo could not be read.')); if (blob.size <= 2 * 1024 * 1024 || quality <= .35) return blob.size <= 2 * 1024 * 1024 ? resolve(blob) : reject(new Error('That photo is too large. Try another photo.')); quality -= .1; encode(); }, 'image/jpeg', quality); encode(); }; image.onerror = () => reject(new Error('That photo could not be read.')); image.src = URL.createObjectURL(file); }); }
+      async function uploadPhoto(blob) { if (busy) return; busy = true; const button = document.getElementById('send-photo'); button.disabled = true; clearMessage(); const form = new FormData(); form.append('player_id', player.player_id); form.append('photo', blob, 'picme.jpg'); try { await api(`/games/${encodeURIComponent(player.code)}/rounds/current/photos`, { method: 'POST', body: form }); rememberSentPhoto(state.round.round_number); renderUploadWaiting(); await poll(); } catch (error) { if (error.status === 409) { rememberSentPhoto(state.round.round_number); renderUploadWaiting(); } else { showError(error.message); button.disabled = false; } } finally { busy = false; } }
+      function renderVoting() { const photo = state.photo || {}, others = (state.players || []).filter(p => Number(p.id) !== Number(player.player_id)), controls = ownPhoto[photo.id] ? '<p class="muted">You cannot vote on your own photo.</p>' : `<p class="muted">Who took this photo?</p><h2>Make your guess</h2><div id="choices" class="choices">${others.map(p => `<button data-player="${escape(p.id)}" class="${guesses[photo.id] === p.id ? 'chosen' : ''}">${escape(p.name)}</button>`).join('')}</div>`; panel(`<div class="center"><img class="photo" src="/photos/${encodeURIComponent(photo.id)}/image" alt="Current anonymous photo">${controls}</div>`); document.querySelectorAll('#choices button').forEach(button => button.onclick = () => castVote(photo.id, Number(button.dataset.player))); }
+      function updateVoting() { document.querySelectorAll('#choices button').forEach(button => button.classList.toggle('chosen', guesses[state.photo.id] === Number(button.dataset.player))); }
+      async function castVote(photoId, guessed) { guesses[photoId] = guessed; try { await api(`/games/${encodeURIComponent(player.code)}/votes`, { method: 'POST', body: JSON.stringify({ player_id: player.player_id, guessed_player_id: guessed }) }); renderVoting(); } catch (error) { if (error.status === 403) { ownPhoto[photoId] = true; showError("This one's yours. Keep a straight face."); renderVoting(); } else showError(error.message); } }
+      function renderReveal() { const photo = state.photo || {}, guess = guesses[photo.id], uploader = (state.players || []).find(p => Number(p.id) === Number(guess)); panel(`<div class="center"><img class="photo" src="/photos/${encodeURIComponent(photo.id)}/image" alt="Revealed photo"><h2>Taken by ${escape(photo.uploader_name || 'Unknown')}</h2><p>${guess ? (uploader && uploader.name === photo.uploader_name ? 'Your guess was right!' : `Your guess was ${escape(uploader ? uploader.name : 'unknown')}.`) : 'You did not make a guess for this photo.'}</p></div>`); }
+      async function renderScoreboard() { panel('<div class="center"><h2>Scoreboard</h2><p class="muted">Loading results...</p></div>'); try { const result = await api(`/games/${encodeURIComponent(player.code)}/scoreboard?player_id=${encodeURIComponent(player.player_id)}`), me = result.me || {}, rows = (result.players || []).map(p => `<tr><td>${escape(p.rank)}</td><td>${escape(p.name)}</td><td>${escape(p.points)}</td></tr>`).join(''); panel(`<div class="center"><p class="muted">Your rank</p><div class="score">#${escape(me.rank)}</div><p>${escape(me.points)} points</p></div><table><thead><tr><th>Rank</th><th>Player</th><th>Points</th></tr></thead><tbody>${rows}</tbody></table>`); } catch (error) { showError(error.message); } }
+      document.getElementById('join-button').onclick = joinGame; leave.onclick = leaveGame; nameInput.onkeydown = event => { if (event.key === 'Enter') joinGame(); };
+      if (player && player.code && player.player_id) { codeInput.value = player.code; nameInput.value = player.name; poll(); }
+    })();
+  </script>
+</body>
+</html>
