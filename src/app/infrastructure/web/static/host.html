@@ -47,6 +47,7 @@
       let categories = [];
       let pollTimer;
       let countdownTimer;
+      let countdownOffset = 0;
       let messageTimer;
       let busy = false;
       let renderedKey = '';
@@ -78,7 +79,7 @@
       async function action(path, options = {}) {
         if (busy) return;
         busy = true; clearError();
-        try { await api(path, options); await poll(); return true; } catch (caught) { showError(caught.message); return false; } finally { busy = false; }
+        try { const result = await api(path, options); if (result && result.upload_deadline && state && state.round) { state.round.upload_deadline = result.upload_deadline; syncCountdown(state.round); } await poll(); return true; } catch (caught) { showError(caught.message); return false; } finally { busy = false; }
       }
       async function createGame() {
         if (busy) return; busy = true; clearError();
@@ -179,15 +180,13 @@
         const round = state.round || {}; panel(`<div class="center"><div class="muted">Prompt</div><h2>${escape(round.prompt)}</h2><div id="countdown" class="countdown">--</div><p>Uploaded <strong id="uploaded-count">${round.uploaded_count || 0}</strong> of <strong id="upload-player-count">${(state.players || []).length}</strong> players</p><div class="actions"><button id="extend">+10 s</button><button id="close-uploads" class="secondary">Close uploads</button></div></div>`);
         document.getElementById('extend').onclick = () => action(`/games/${credentials.code}/rounds/current/extend`, { method: 'POST' });
         document.getElementById('close-uploads').onclick = () => action(`/games/${credentials.code}/rounds/current/close`, { method: 'POST' });
-        startCountdown(round);
+        startCountdown();
       }
-      function updateUploading() { const round = state.round || {}; document.getElementById('uploaded-count').textContent = round.uploaded_count || 0; document.getElementById('upload-player-count').textContent = (state.players || []).length; }
-      function stopCountdown() { clearInterval(countdownTimer); }
-      function startCountdown(round) {
-        const deadline = Date.parse(round.upload_deadline); const server = Date.parse(round.server_time || new Date().toISOString()); const offset = Date.now() - server;
-        const update = () => { const seconds = Math.max(0, Math.ceil((deadline - (Date.now() - offset)) / 1000)); const target = document.getElementById('countdown'); if (target) target.textContent = `${seconds}s`; };
-        update(); countdownTimer = setInterval(update, 250);
-      }
+       function updateUploading() { const round = state.round || {}; document.getElementById('uploaded-count').textContent = round.uploaded_count || 0; document.getElementById('upload-player-count').textContent = (state.players || []).length; syncCountdown(round); }
+       function stopCountdown() { clearInterval(countdownTimer); }
+       function startCountdown() { syncCountdown(state.round || {}); countdownTimer = setInterval(() => updateCountdown(state.round || {}), 250); }
+       function syncCountdown(round) { countdownOffset = Date.now() - Date.parse(round.server_time || new Date().toISOString()); updateCountdown(round); }
+       function updateCountdown(round) { const deadline = Date.parse(round.upload_deadline); const seconds = Math.max(0, Math.ceil((deadline - (Date.now() - countdownOffset)) / 1000)); const target = document.getElementById('countdown'); if (target) target.textContent = `${seconds}s`; }
       function renderVoting() {
         const photo = state.photo || {}; const voting = state.voting || {};
         panel(`<div class="center"><img class="photo" src="/photos/${encodeURIComponent(photo.id)}/image" alt="Current anonymous photo"><h2>Photo ${photo.position} of ${photo.total}</h2><p>Voted <strong id="voted-count">${voting.voted || 0}</strong> of <strong id="eligible-count">${voting.eligible || 0}</strong></p><button id="close-voting">Close voting</button></div>`);
